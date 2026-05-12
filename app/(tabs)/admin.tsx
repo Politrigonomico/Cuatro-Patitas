@@ -1,59 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, Platform } from 'react-native';
+import { Text, View, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, Platform, StyleSheet } from 'react-native';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import app from '../../firebaseConfig'; 
-import { globalStyles as styles } from '../../constants/globalStyles';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Button, SectionTitle, Card, Badge } from '../../components/ui';
+import { RequestCard } from '../../components/ui/RequestCard';
+import { CastrationCard } from '../../components/ui/CastrationCard';
 
-interface Solicitud {
-  id: string; animalId: string; animalNombre: string; estadoSolicitud: string; notaDevolucion: string;
-  datosAdoptante: { nombreCompleto: string; dni: string; telefono: string; tipoVivienda: string; tienePatio: string; esAlquilado: string; quienesViven: string; todosDeAcuerdo: string; tieneOtrasMascotas: string; horasSolo: string; acuerdoSeguimiento: string; };
-}
+import type { Solicitud, Castracion, Campana, Animal, Seguimiento } from '../../types';
 
-interface Seguimiento {
-  id: string; animalNombre: string; adoptanteNombre: string; adoptanteDni: string; adoptanteTelefono: string; fechaAdopcion: string; notasSeguimiento: string;
-}
-
-interface Castracion {
-  id: string; 
-  responsableNombre: string; 
-  responsableDni: string; 
-  responsableTelefono: string; 
-  animalNombre: string; 
-  animalEspecie: string; 
-  animalSexo: string; 
-  estadoTurno: string; 
-  notaDevolucion: string;
-  campanaId?: string; 
-}
-
-// NUEVO: Interfaz para las Campañas
-interface Campana {
-  id: string; fecha: string; lugar: string; cupo: string; estado: string;
-}
+type Seccion = 'MENU' | 'ANIMALES' | 'ADOPCIONES' | 'CASTRACIONES';
 
 export default function Admin() {
+  const [seccionActiva, setSeccionActiva] = useState<Seccion>('MENU');
   const [cargando, setCargando] = useState(true);
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [castraciones, setCastraciones] = useState<Castracion[]>([]);
-  const [campanas, setCampanas] = useState<Campana[]>([]); // NUEVO: Estado para las campañas
+  const [campanas, setCampanas] = useState<Campana[]>([]);
   const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([]);
-  const [modalManualVisible, setModalManualVisible] = useState(false);
-  const [datosManual, setDatosManual] = useState({ 
-    animalNombre: '', adoptanteNombre: '', adoptanteDni: '', adoptanteTelefono: '', fechaAdopcion: '', notasSeguimiento: '' 
-  });
+  const [animales, setAnimales] = useState<Animal[]>([]);
+
+  // Filtros
+  const [filtroAdopciones, setFiltroAdopciones] = useState<'Todas' | 'Pendiente'>('Todas');
 
   // Modales
+  const [modalManualVisible, setModalManualVisible] = useState(false);
   const [modalAnimalVisible, setModalAnimalVisible] = useState(false);
   const [modalEvaluacionVisible, setModalEvaluacionVisible] = useState(false);
   const [modalAgendarVisible, setModalAgendarVisible] = useState(false); 
-  const [modalCampanaVisible, setModalCampanaVisible] = useState(false); // NUEVO: Modal de campaña
+  const [modalCampanaVisible, setModalCampanaVisible] = useState(false); 
   
   // Estados de datos
   const [nuevoAnimal, setNuevoAnimal] = useState({ nombre: '', edad: '', tamaño: '', estado: 'En adopción', foto: 'url_de_prueba' });
   const [datosWhatsApp, setDatosWhatsApp] = useState({ responsableNombre: '', responsableDni: '', responsableTelefono: '', animalNombre: '', animalEspecie: '', animalSexo: '' });
-  // NUEVO: Estado para crear la campaña
   const [nuevaCampana, setNuevaCampana] = useState({ fecha: '', lugar: '', cupo: '', estado: 'Abierta' });
+  const [datosManual, setDatosManual] = useState({ animalNombre: '', adoptanteNombre: '', adoptanteDni: '', adoptanteTelefono: '', fechaAdopcion: '', notasSeguimiento: '' });
   
   const [elementoActivo, setElementoActivo] = useState<{id: string, coleccion: string} | null>(null);
   const [nuevoEstado, setNuevoEstado] = useState('');
@@ -76,7 +57,6 @@ export default function Admin() {
       castSnapshot.forEach((doc) => listaCastraciones.push({ id: doc.id, ...doc.data() } as Castracion));
       setCastraciones(listaCastraciones);
 
-      // NUEVO: Cargar campañas
       const campSnapshot = await getDocs(collection(db, 'Campañas'));
       const listaCampanas: Campana[] = [];
       campSnapshot.forEach((doc) => listaCampanas.push({ id: doc.id, ...doc.data() } as Campana));
@@ -87,12 +67,16 @@ export default function Admin() {
       segSnapshot.forEach((doc) => listaSeguimientos.push({ id: doc.id, ...doc.data() } as Seguimiento));
       setSeguimientos(listaSeguimientos);
 
+      const animSnapshot = await getDocs(collection(db, 'Animales'));
+      const listaAnimales: Animal[] = [];
+      animSnapshot.forEach((doc) => listaAnimales.push({ id: doc.id, ...doc.data() } as Animal));
+      setAnimales(listaAnimales);
+
     } catch (error) { console.error(error); } finally { setCargando(false); }
   };
 
   useEffect(() => { cargarDatos(); }, []);
 
-  // NUEVO: Función para guardar campaña
   const guardarCampana = async () => {
     if (!nuevaCampana.fecha || !nuevaCampana.lugar || !nuevaCampana.cupo) return Alert.alert("Atención", "Completa todos los datos de la campaña.");
     try {
@@ -113,7 +97,7 @@ export default function Admin() {
       const db = getFirestore(app);
       await addDoc(collection(db, 'Seguimiento'), {
         ...datosManual,
-        animalId: 'manual', // Marcamos que fue una carga manual
+        animalId: 'manual', 
         fechaAdopcion: datosManual.fechaAdopcion || new Date().toLocaleDateString(),
         notasSeguimiento: datosManual.notasSeguimiento || 'Cargado manualmente desde registros antiguos.'
       });
@@ -132,6 +116,7 @@ export default function Admin() {
       Alert.alert("¡Éxito!", "Agregado al catálogo.");
       setNuevoAnimal({ nombre: '', edad: '', tamaño: '', estado: 'En adopción', foto: 'url_de_prueba' });
       setModalAnimalVisible(false);
+      cargarDatos();
     } catch { Alert.alert("Error", "No se pudo guardar."); }
   };
 
@@ -166,7 +151,6 @@ export default function Admin() {
       
       let mensajeExito = "Estado actualizado correctamente.";
 
-      // --- 0. LÓGICA DE EDICIÓN DE SEGUIMIENTO (Notas de perros ya adoptados) ---
       if (elementoActivo.coleccion === 'Seguimiento') {
         await updateDoc(refRegistro, { notasSeguimiento: notaDevolucion });
         Alert.alert("¡Éxito!", "La nota de seguimiento se guardó.");
@@ -175,16 +159,13 @@ export default function Admin() {
         return;
       }
 
-      // --- 1. LÓGICA DE ADOPCIÓN EXITOSA ---
       if (elementoActivo.coleccion === 'Solicitudes_Adopciones' && nuevoEstado === 'Aprobado') {
         const soli = solicitudes.find(s => s.id === elementoActivo.id);
         
         if (soli) {
-          // A. Movemos al animal a estado "Adoptado"
           const animalRef = doc(db, 'Animales', soli.animalId);
           await updateDoc(animalRef, { estado: 'Adoptado' });
 
-          // B. Creamos la ficha de Seguimiento (tus "papeles" digitales)
           await addDoc(collection(db, 'Seguimiento'), {
             animalId: soli.animalId,
             animalNombre: soli.animalNombre,
@@ -199,7 +180,6 @@ export default function Admin() {
         }
       }
 
-      // --- 2. LÓGICA DE CUPOS DE CASTRACIONES ---
       if (elementoActivo.coleccion === 'Castraciones') {
         const snapTurno = castraciones.find(c => c.id === elementoActivo.id);
         if (snapTurno && snapTurno.campanaId) {
@@ -219,18 +199,15 @@ export default function Admin() {
         }
       }
 
-      // --- 3. CAMBIO DE ESTADO DE LA SOLICITUD (Vital para que desaparezca de pendientes) ---
-      // Aquí es donde le avisamos a la base de datos que esta solicitud ya NO es "Pendiente"
       const datosActualizar = elementoActivo.coleccion === 'Castraciones' 
         ? { estadoTurno: nuevoEstado, notaDevolucion: notaDevolucion } 
         : { estadoSolicitud: nuevoEstado, notaDevolucion: notaDevolucion };
       
       await updateDoc(refRegistro, datosActualizar);
 
-      // --- 4. FINALIZAR ---
       Alert.alert("¡Hecho!", mensajeExito);
       setModalEvaluacionVisible(false); 
-      cargarDatos(); // Refrescamos la lista para que el registro aprobado desaparezca de la vista
+      cargarDatos(); 
 
     } catch (error) { 
       console.error(error);
@@ -243,7 +220,7 @@ export default function Admin() {
       weekday: 'long',
       day: 'numeric',
       month: 'long'
-    }).replace(/^\w/, (c) => c.toUpperCase()); // Pone la primera letra en mayúscula
+    }).replace(/^\w/, (c) => c.toUpperCase());
   };
 
   const borrarRegistro = async (id: string, coleccion: string) => {
@@ -271,155 +248,163 @@ export default function Admin() {
     }
   };
 
+  const renderCabecera = (titulo: string) => (
+    <View style={s.header}>
+      {seccionActiva !== 'MENU' && (
+        <TouchableOpacity style={s.botonVolver} onPress={() => setSeccionActiva('MENU')}>
+          <Text style={s.textoVolver}>← Volver</Text>
+        </TouchableOpacity>
+      )}
+      <Text style={s.titulo}>{titulo}</Text>
+    </View>
+  );
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#f0f4f8' }}>
-      <ScrollView>
-        <View style={styles.contenedorCentral}>
-          <View style={styles.header}>
-            <Text style={styles.titulo}>Panel de Control</Text>
-          </View>
-
-          <View style={styles.contenido}>
-            <TouchableOpacity style={styles.botonActualizarGlobal} onPress={cargarDatos}>
-              <Text style={styles.textoBotonSecundario}>🔄 Sincronizar Datos</Text>
-            </TouchableOpacity>
-
-            <View style={styles.seccionAcciones}>
-              <TouchableOpacity style={styles.botonAgregarAnimal} onPress={() => setModalAnimalVisible(true)}>
-                <Text style={styles.textoBotonBlanco}>+ Agregar Perrito al Catálogo</Text>
+    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        
+        {/* --- VISTA: MENÚ PRINCIPAL (DASHBOARD) --- */}
+        {seccionActiva === 'MENU' && (
+          <>
+            {renderCabecera('Panel de Control')}
+            <View style={s.contenido}>
+              <TouchableOpacity style={s.botonSincronizar} onPress={cargarDatos}>
+                <Text style={s.textoSincronizar}>🔄 Sincronizar Datos</Text>
               </TouchableOpacity>
-              
-              {/* NUEVO: Botón para crear campaña */}
-              <TouchableOpacity style={[styles.botonAgregarAnimal, {backgroundColor: '#8b5cf6', marginTop: 10}]} onPress={() => setModalCampanaVisible(true)}>
-                <Text style={styles.textoBotonBlanco}>📅 Crear Campaña de Castración</Text>
+
+              <View style={s.gridMenu}>
+                <MenuCard title="Gestionar Animales" icon="🐾" count={animales.length} onPress={() => setSeccionActiva('ANIMALES')} />
+                <MenuCard title="Solicitudes Adopción" icon="🏠" count={solicitudes.filter(s => s.estadoSolicitud === 'Pendiente').length} subtitle="Pendientes" onPress={() => setSeccionActiva('ADOPCIONES')} />
+                <MenuCard title="Turnos Castración" icon="🏥" count={castraciones.filter(c => c.estadoTurno === 'Pendiente').length} subtitle="Pendientes" onPress={() => setSeccionActiva('CASTRACIONES')} />
+              </View>
+
+              <TouchableOpacity style={s.botonCargaManual} onPress={() => setModalManualVisible(true)}>
+                <Text style={s.textoCargaManual}>📂 Cargar Adoptante Antiguo</Text>
               </TouchableOpacity>
             </View>
+          </>
+        )}
 
-            <TouchableOpacity style={[styles.botonAgregarAnimal, {backgroundColor: '#1e293b', marginTop: 10}]} onPress={() => setModalManualVisible(true)}>
-                <Text style={styles.textoBotonBlanco}>📂 Cargar Adoptante Antiguo</Text>
-              </TouchableOpacity>
-
-            {cargando ? <ActivityIndicator size="large" color="#0f172a" style={{marginTop: 20}} /> : (
-              <>
-                {/* NUEVO: SECCIÓN CAMPAÑAS */}
-                <Text style={styles.tituloSeccion}>Campañas Activas</Text>
-                {campanas.length === 0 ? <Text style={styles.textoVacio}>No hay campañas programadas.</Text> : 
-                  campanas.map((camp) => (
-                    <View key={camp.id} style={styles.tarjeta}>
-                      <View style={styles.encabezadoTarjeta}>
-                        <Text style={styles.nombreAnimalSolicitud}>Campaña: {camp.fecha}</Text>
-                        <View style={styles.filaInsignias}>
-                          <Text style={[styles.estadoBandeja, camp.estado === 'Abierta' ? {backgroundColor: '#dcfce7', color: '#166534'} : {}]}>{camp.estado}</Text>
-                          <TouchableOpacity onPress={() => borrarRegistro(camp.id, 'Campañas')} style={styles.botonBorrar}><Text>🗑️</Text></TouchableOpacity>
-                        </View>
+        {/* --- VISTA: ANIMALES --- */}
+        {seccionActiva === 'ANIMALES' && (
+          <>
+            {renderCabecera('Gestión de Animales')}
+            <View style={s.contenido}>
+              <Button label="+ Agregar Perrito al Catálogo" onPress={() => setModalAnimalVisible(true)} variant="primary" style={{ marginBottom: 20 }} />
+              
+              {cargando ? <ActivityIndicator size="large" color="#1e3a8a" /> : (
+                animales.map((anim) => (
+                  <Card key={anim.id} style={s.cardMini}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View>
+                        <Text style={s.nombreAnimal}>{anim.nombre}</Text>
+                        <Text style={s.detalleAnimal}>{anim.tamaño} · {anim.edad}</Text>
                       </View>
-                      <Text style={styles.datoAdoptante}><Text style={styles.negrita}>Lugar:</Text> {camp.lugar}</Text>
-                      <Text style={styles.datoAdoptante}><Text style={styles.negrita}>Cupo máximo:</Text> {camp.cupo} lugares</Text>
-                    </View>
-                  ))
-                }
-
-                <View style={styles.separador} />
-
-                {/* CASTRACIONES */}
-                <View style={styles.filaTituloConBoton}>
-                  <Text style={styles.tituloSeccion}>Castraciones (Triage)</Text>
-                  <TouchableOpacity style={styles.botonAgendarWhatsapp} onPress={() => setModalAgendarVisible(true)}>
-                    <Text style={styles.textoBotonBlancoPequeño}>+ WhatsApp</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {castraciones.length === 0 ? <Text style={styles.textoVacio}>No hay turnos.</Text> : 
-                  castraciones.map((turno) => (
-                    <View key={turno.id} style={styles.tarjeta}>
-                      <View style={styles.encabezadoTarjeta}>
-                        <Text style={styles.nombreAnimalSolicitud}>{turno.animalNombre} ({turno.animalEspecie} {turno.animalSexo})</Text>
-                        <View style={styles.filaInsignias}>
-                          <Text style={styles.estadoBandeja}>{turno.estadoTurno}</Text>
-                          <TouchableOpacity onPress={() => borrarRegistro(turno.id, 'Castraciones')} style={styles.botonBorrar}><Text>🗑️</Text></TouchableOpacity>
-                        </View>
-                      </View>
-                      <Text style={styles.datoAdoptante}><Text style={styles.negrita}>Dueño:</Text> {turno.responsableNombre}</Text>
-                      <Text style={styles.datoAdoptante}><Text style={styles.negrita}>DNI:</Text> {turno.responsableDni} | <Text style={styles.negrita}>Tel:</Text> {turno.responsableTelefono}</Text>
-                      {turno.notaDevolucion ? <Text style={styles.textoNotaInterna}><Text style={styles.negrita}>Nota:</Text> {turno.notaDevolucion}</Text> : null}
-                      <View style={styles.acciones}>
-                        <TouchableOpacity style={styles.botonAprobar} onPress={() => abrirEvaluacion(turno.id, 'Castraciones', 'Aprobado')}><Text style={styles.textoBotonBlanco}>Aprobar</Text></TouchableOpacity>
-                        <TouchableOpacity style={styles.botonDevolucion} onPress={() => abrirEvaluacion(turno.id, 'Castraciones', 'Lista de Espera')}><Text style={styles.textoBotonBlanco}>A Espera</Text></TouchableOpacity>
-                        <TouchableOpacity style={styles.botonRechazar} onPress={() => abrirEvaluacion(turno.id, 'Castraciones', 'Rechazado')}><Text style={styles.textoBotonBlanco}>Rechazar</Text></TouchableOpacity>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Badge status={anim.estado} />
+                        <TouchableOpacity onPress={() => borrarRegistro(anim.id, 'Animales')} hitSlop={8}>
+                          <Text style={{ fontSize: 16 }}>🗑️</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
+                  </Card>
+                ))
+              )}
+            </View>
+          </>
+        )}
+
+        {/* --- VISTA: ADOPCIONES --- */}
+        {seccionActiva === 'ADOPCIONES' && (
+          <>
+            {renderCabecera('Solicitudes de Adopción')}
+            <View style={s.contenido}>
+              {/* Filtro Rápido */}
+              <View style={s.filtroContainer}>
+                <TouchableOpacity style={[s.filtroBtn, filtroAdopciones === 'Todas' && s.filtroBtnActivo]} onPress={() => setFiltroAdopciones('Todas')}>
+                  <Text style={[s.filtroText, filtroAdopciones === 'Todas' && s.filtroTextActivo]}>Todas</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.filtroBtn, filtroAdopciones === 'Pendiente' && s.filtroBtnActivo]} onPress={() => setFiltroAdopciones('Pendiente')}>
+                  <Text style={[s.filtroText, filtroAdopciones === 'Pendiente' && s.filtroTextActivo]}>Pendientes</Text>
+                </TouchableOpacity>
+              </View>
+
+              {cargando ? <ActivityIndicator size="large" color="#1e3a8a" /> : (
+                solicitudes
+                  .filter(soli => filtroAdopciones === 'Todas' || soli.estadoSolicitud === 'Pendiente')
+                  .map((soli) => (
+                    <RequestCard
+                      key={soli.id}
+                      solicitud={soli}
+                      onAprobar={() => abrirEvaluacion(soli.id, 'Solicitudes_Adopciones', 'Aprobado')}
+                      onInfo={() => abrirEvaluacion(soli.id, 'Solicitudes_Adopciones', 'Requiere Info')}
+                      onRechazar={() => abrirEvaluacion(soli.id, 'Solicitudes_Adopciones', 'Rechazado')}
+                      onEliminar={() => borrarRegistro(soli.id, 'Solicitudes_Adopciones')}
+                    />
                   ))
-                }
+              )}
+            </View>
+          </>
+        )}
 
+        {/* --- VISTA: CASTRACIONES --- */}
+        {seccionActiva === 'CASTRACIONES' && (
+          <>
+            {renderCabecera('Turnos y Campañas')}
+            <View style={s.contenido}>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                <Button label="+ Nueva Campaña" onPress={() => setModalCampanaVisible(true)} variant="primary" style={{ flex: 1 }} />
+                <Button label="+ WhatsApp" onPress={() => setModalAgendarVisible(true)} variant="secondary" style={{ flex: 1 }} />
+              </View>
 
-                <View style={styles.separador} />
-                <Text style={styles.tituloSeccion}>Control de Seguimientos (Adoptados)</Text>
-                {seguimientos.length === 0 ? <Text style={styles.textoVacio}>No hay seguimientos registrados.</Text> : 
-                  seguimientos.map((seg) => (
-                    <View key={seg.id} style={[styles.tarjeta, {borderLeftWidth: 5, borderLeftColor: '#059669'}]}>
-                      <View style={styles.encabezadoTarjeta}>
-                        <Text style={styles.nombreAnimalSolicitud}>{seg.animalNombre}</Text>
-                        <TouchableOpacity onPress={() => borrarRegistro(seg.id, 'Seguimiento')} style={styles.botonBorrar}><Text>🗑️</Text></TouchableOpacity>
-                      </View>
-                      <Text style={styles.datoAdoptante}><Text style={styles.negrita}>Adoptante:</Text> {seg.adoptanteNombre} (DNI: {seg.adoptanteDni})</Text>
-                      <Text style={styles.datoAdoptante}><Text style={styles.negrita}>Teléfono:</Text> {seg.adoptanteTelefono}</Text>
-                      <Text style={styles.datoAdoptante}><Text style={styles.negrita}>Fecha:</Text> {seg.fechaAdopcion}</Text>
-                      
-                      <TouchableOpacity 
-                        style={styles.textoNotaInterna} 
-                        onPress={() => abrirEvaluacion(seg.id, 'Seguimiento', 'Actualizar Nota')}
-                      >
-                        <Text style={{color: '#92400e'}}><Text style={styles.negrita}>Nota de Seguimiento:</Text> {seg.notasSeguimiento}</Text>
-                        <Text style={{fontSize: 10, marginTop: 5, color: '#b45309'}}>Toca para editar nota</Text>
+              <SectionTitle>Campañas Activas</SectionTitle>
+              {campanas.map((camp) => (
+                <Card key={camp.id} style={{ padding: 16 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View>
+                      <Text style={{ fontWeight: '700', color: '#0f172a' }}>{camp.fecha}</Text>
+                      <Text style={{ fontSize: 13, color: '#64748b' }}>{camp.lugar}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Badge status={camp.estado} />
+                      <TouchableOpacity onPress={() => borrarRegistro(camp.id, 'Campañas')} hitSlop={8}>
+                        <Text style={{ fontSize: 16 }}>🗑️</Text>
                       </TouchableOpacity>
                     </View>
-                  ))
-                }
+                  </View>
+                </Card>
+              ))}
 
-                {/* ADOPCIONES */}
-                <Text style={styles.tituloSeccion}>Solicitudes de Adopción</Text>
-                {solicitudes.length === 0 ? <Text style={styles.textoVacio}>No hay solicitudes.</Text> : (
-                  solicitudes.map((soli) => (
-                    <View key={soli.id} style={styles.tarjeta}>
-                      <View style={styles.encabezadoTarjeta}>
-                        <Text style={styles.nombreAnimalSolicitud}>Para: {soli.animalNombre}</Text>
-                        <View style={styles.filaInsignias}>
-                          <Text style={styles.estadoBandeja}>{soli.estadoSolicitud}</Text>
-                          <TouchableOpacity onPress={() => borrarRegistro(soli.id, 'Solicitudes_Adopciones')} style={styles.botonBorrar}><Text>🗑️</Text></TouchableOpacity>
-                        </View>
-                      </View>
-                      <View style={styles.bloqueRespuestas}>
-                        <Text style={styles.datoAdoptante}><Text style={styles.negrita}>Adoptante:</Text> {soli.datosAdoptante?.nombreCompleto}</Text>
-                        <Text style={styles.datoAdoptante}><Text style={styles.negrita}>DNI:</Text> {soli.datosAdoptante?.dni} | <Text style={styles.negrita}>Tel:</Text> {soli.datosAdoptante?.telefono}</Text>
-                        <Text style={styles.datoAdoptante}><Text style={styles.negrita}>Hogar:</Text> {soli.datosAdoptante?.tipoVivienda} | Patio: {soli.datosAdoptante?.tienePatio}</Text>
-                      </View>
-                      {soli.notaDevolucion ? <Text style={styles.textoNotaInterna}><Text style={styles.negrita}>Nota:</Text> {soli.notaDevolucion}</Text> : null}
-                      <View style={styles.acciones}>
-                        <TouchableOpacity style={styles.botonAprobar} onPress={() => abrirEvaluacion(soli.id, 'Solicitudes_Adopciones', 'Aprobado')}><Text style={styles.textoBotonBlanco}>Aprobar</Text></TouchableOpacity>
-                        <TouchableOpacity style={styles.botonDevolucion} onPress={() => abrirEvaluacion(soli.id, 'Solicitudes_Adopciones', 'Requiere Info')}><Text style={styles.textoBotonBlanco}>Info</Text></TouchableOpacity>
-                        <TouchableOpacity style={styles.botonRechazar} onPress={() => abrirEvaluacion(soli.id, 'Solicitudes_Adopciones', 'Rechazado')}><Text style={styles.textoBotonBlanco}>Rechazar</Text></TouchableOpacity>
-                      </View>
-                    </View>
-                  ))
-                )}
-              </>
-            )}
-          </View>
-        </View>
+              <SectionTitle>Solicitudes de Turno</SectionTitle>
+              {cargando ? <ActivityIndicator size="large" color="#1e3a8a" /> : (
+                castraciones.map((turno) => (
+                  <CastrationCard
+                    key={turno.id}
+                    turno={turno}
+                    onAprobar={() => abrirEvaluacion(turno.id, 'Castraciones', 'Aprobado')}
+                    onEspera={() => abrirEvaluacion(turno.id, 'Castraciones', 'Lista de Espera')}
+                    onRechazar={() => abrirEvaluacion(turno.id, 'Castraciones', 'Rechazado')}
+                    onEliminar={() => borrarRegistro(turno.id, 'Castraciones')}
+                  />
+                ))
+              )}
+            </View>
+          </>
+        )}
+
       </ScrollView>
 
+      {/* --- MODALES (Se mantienen iguales pero con estilo pulido) --- */}
+      
       {/* NUEVO: MODAL PARA CREAR CAMPAÑA */}
       <Modal visible={modalCampanaVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTituloAzul}>Nueva Campaña</Text>
+        <View style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <Text style={s.modalTitulo}>Nueva Campaña</Text>
             
-            <Text style={styles.labelFino}>Fecha de la Campaña</Text>
-              <TouchableOpacity 
-                style={styles.input} 
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={{fontSize: 16, color: nuevaCampana.fecha ? '#000' : '#94a3b8'}}>
+            <Text style={s.labelFino}>Fecha de la Campaña</Text>
+              <TouchableOpacity style={s.input} onPress={() => setShowDatePicker(true)}>
+                <Text style={{fontSize: 15, color: nuevaCampana.fecha ? '#0f172a' : '#94a3b8'}}>
                   {nuevaCampana.fecha || "Toca para elegir fecha"}
                 </Text>
               </TouchableOpacity>
@@ -440,103 +425,116 @@ export default function Admin() {
                 />
               )}
             
-            <Text style={styles.labelFino}>Lugar / Dirección</Text>
-            <TextInput style={styles.input} placeholder="¿Dónde será?" value={nuevaCampana.lugar} onChangeText={(t) => setNuevaCampana({...nuevaCampana, lugar: t})} />
+            <Text style={s.labelFino}>Lugar / Dirección</Text>
+            <TextInput style={s.input} placeholder="¿Dónde será?" value={nuevaCampana.lugar} onChangeText={(t) => setNuevaCampana({...nuevaCampana, lugar: t})} />
             
-            <Text style={styles.labelFino}>Cupo Máximo</Text>
-            <TextInput style={styles.input} placeholder="Cantidad de animales permitidos" keyboardType="numeric" value={nuevaCampana.cupo} onChangeText={(t) => setNuevaCampana({...nuevaCampana, cupo: t})} />
+            <Text style={s.labelFino}>Cupo Máximo</Text>
+            <TextInput style={s.input} placeholder="Cantidad de animales" keyboardType="numeric" value={nuevaCampana.cupo} onChangeText={(t) => setNuevaCampana({...nuevaCampana, cupo: t})} />
             
-            <View style={styles.filaBotones}>
-              <TouchableOpacity style={styles.botonCancelarModal} onPress={() => setModalCampanaVisible(false)}>
-                <Text style={styles.textoBotonOscuro}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.botonEnviarPedido, {backgroundColor: '#8b5cf6'}]} onPress={guardarCampana}>
-                <Text style={styles.textoBotonBlanco}>Publicar</Text>
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Button label="Cancelar" onPress={() => setModalCampanaVisible(false)} variant="secondary" style={{ flex: 1 }} />
+              <Button label="Publicar" onPress={guardarCampana} variant="primary" style={{ flex: 1 }} />
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* MODAL: AGENDAR DE WHATSAPP CON DNI */}
+      {/* MODAL: AGENDAR DE WHATSAPP */}
       <Modal visible={modalAgendarVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTituloAzul}>Agendar de WhatsApp</Text>
+        <View style={s.modalOverlay}>
+          <ScrollView contentContainerStyle={s.modalSheet}>
+            <Text style={s.modalTitulo}>Agendar de WhatsApp</Text>
             
-            <Text style={styles.labelFino}>Datos del Responsable</Text>
-            <TextInput style={styles.input} placeholder="Nombre completo" value={datosWhatsApp.responsableNombre} onChangeText={(t) => setDatosWhatsApp({...datosWhatsApp, responsableNombre: t})} />
-            <TextInput style={styles.input} placeholder="DNI (Sin puntos)" keyboardType="numeric" value={datosWhatsApp.responsableDni} onChangeText={(t) => setDatosWhatsApp({...datosWhatsApp, responsableDni: t})} />
-            <TextInput style={styles.input} placeholder="Número de WhatsApp" keyboardType="phone-pad" value={datosWhatsApp.responsableTelefono} onChangeText={(t) => setDatosWhatsApp({...datosWhatsApp, responsableTelefono: t})} />
+            <Text style={s.labelFino}>Datos del Responsable</Text>
+            <TextInput style={s.input} placeholder="Nombre completo" value={datosWhatsApp.responsableNombre} onChangeText={(t) => setDatosWhatsApp({...datosWhatsApp, responsableNombre: t})} />
+            <TextInput style={s.input} placeholder="DNI (Sin puntos)" keyboardType="numeric" value={datosWhatsApp.responsableDni} onChangeText={(t) => setDatosWhatsApp({...datosWhatsApp, responsableDni: t})} />
+            <TextInput style={s.input} placeholder="Número de WhatsApp" keyboardType="phone-pad" value={datosWhatsApp.responsableTelefono} onChangeText={(t) => setDatosWhatsApp({...datosWhatsApp, responsableTelefono: t})} />
             
-            <Text style={styles.labelFino}>Datos del Animal</Text>
-            <TextInput style={styles.input} placeholder="Nombre de la mascota" value={datosWhatsApp.animalNombre} onChangeText={(t) => setDatosWhatsApp({...datosWhatsApp, animalNombre: t})} />
+            <Text style={s.labelFino}>Datos del Animal</Text>
+            <TextInput style={s.input} placeholder="Nombre de la mascota" value={datosWhatsApp.animalNombre} onChangeText={(t) => setDatosWhatsApp({...datosWhatsApp, animalNombre: t})} />
             
-            <View style={styles.filaBotonesSeleccion}>
-              <TouchableOpacity style={[styles.botonSeleccion, datosWhatsApp.animalEspecie === 'Perro' ? styles.botonActivoAzul : styles.botonInactivo]} onPress={() => setDatosWhatsApp({...datosWhatsApp, animalEspecie: 'Perro'})}>
-                <Text style={datosWhatsApp.animalEspecie === 'Perro' ? styles.textoBotonBlanco : styles.textoBotonOscuro}>Perro</Text>
+            <View style={s.filaBotonesSeleccion}>
+              <TouchableOpacity style={[s.botonSeleccion, datosWhatsApp.animalEspecie === 'Perro' && s.botonActivo]} onPress={() => setDatosWhatsApp({...datosWhatsApp, animalEspecie: 'Perro'})}>
+                <Text style={datosWhatsApp.animalEspecie === 'Perro' ? s.textoActivo : s.textoInactivo}>Perro</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.botonSeleccion, datosWhatsApp.animalEspecie === 'Gato' ? styles.botonActivoAzul : styles.botonInactivo]} onPress={() => setDatosWhatsApp({...datosWhatsApp, animalEspecie: 'Gato'})}>
-                <Text style={datosWhatsApp.animalEspecie === 'Gato' ? styles.textoBotonBlanco : styles.textoBotonOscuro}>Gato</Text>
+              <TouchableOpacity style={[s.botonSeleccion, datosWhatsApp.animalEspecie === 'Gato' && s.botonActivo]} onPress={() => setDatosWhatsApp({...datosWhatsApp, animalEspecie: 'Gato'})}>
+                <Text style={datosWhatsApp.animalEspecie === 'Gato' ? s.textoActivo : s.textoInactivo}>Gato</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.filaBotonesSeleccion}>
-              <TouchableOpacity style={[styles.botonSeleccion, datosWhatsApp.animalSexo === 'Hembra' ? styles.botonActivoRosa : styles.botonInactivo]} onPress={() => setDatosWhatsApp({...datosWhatsApp, animalSexo: 'Hembra'})}>
-                <Text style={datosWhatsApp.animalSexo === 'Hembra' ? styles.textoBotonBlanco : styles.textoBotonOscuro}>Hembra</Text>
+            <View style={s.filaBotonesSeleccion}>
+              <TouchableOpacity style={[s.botonSeleccion, datosWhatsApp.animalSexo === 'Hembra' && s.botonActivo]} onPress={() => setDatosWhatsApp({...datosWhatsApp, animalSexo: 'Hembra'})}>
+                <Text style={datosWhatsApp.animalSexo === 'Hembra' ? s.textoActivo : s.textoInactivo}>Hembra</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.botonSeleccion, datosWhatsApp.animalSexo === 'Macho' ? styles.botonActivoAzul : styles.botonInactivo]} onPress={() => setDatosWhatsApp({...datosWhatsApp, animalSexo: 'Macho'})}>
-                <Text style={datosWhatsApp.animalSexo === 'Macho' ? styles.textoBotonBlanco : styles.textoBotonOscuro}>Macho</Text>
+              <TouchableOpacity style={[s.botonSeleccion, datosWhatsApp.animalSexo === 'Macho' && s.botonActivo]} onPress={() => setDatosWhatsApp({...datosWhatsApp, animalSexo: 'Macho'})}>
+                <Text style={datosWhatsApp.animalSexo === 'Macho' ? s.textoActivo : s.textoInactivo}>Macho</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.filaBotones}>
-              <TouchableOpacity style={styles.botonCancelarModal} onPress={() => setModalAgendarVisible(false)}>
-                <Text style={styles.textoBotonOscuro}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.botonEnviarPedido} onPress={guardarTurnoWhatsApp}>
-                <Text style={styles.textoBotonBlanco}>Anotar</Text>
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Button label="Cancelar" onPress={() => setModalAgendarVisible(false)} variant="secondary" style={{ flex: 1 }} />
+              <Button label="Anotar" onPress={guardarTurnoWhatsApp} variant="primary" style={{ flex: 1 }} />
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* MODAL: NUEVO PERRITO */}
+      <Modal visible={modalAnimalVisible} animationType="slide" transparent={true}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <Text style={s.modalTitulo}>Nuevo Perrito</Text>
+            <TextInput style={s.input} placeholder="Nombre" value={nuevoAnimal.nombre} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, nombre: t})} />
+            <TextInput style={s.input} placeholder="Edad" value={nuevoAnimal.edad} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, edad: t})} />
+            <TextInput style={s.input} placeholder="Tamaño" value={nuevoAnimal.tamaño} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, tamaño: t})} />
+            
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Button label="Cancelar" onPress={() => setModalAnimalVisible(false)} variant="secondary" style={{ flex: 1 }} />
+              <Button label="Guardar" onPress={guardarPerrito} variant="primary" style={{ flex: 1 }} />
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* MODALES CLÁSICOS DE ADMIN */}
-      <Modal visible={modalAnimalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}><View style={styles.modalContent}><Text style={styles.modalTituloAzul}>Nuevo Perrito</Text><TextInput style={styles.input} placeholder="Nombre" value={nuevoAnimal.nombre} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, nombre: t})} /><TextInput style={styles.input} placeholder="Edad" value={nuevoAnimal.edad} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, edad: t})} /><TextInput style={styles.input} placeholder="Tamaño" value={nuevoAnimal.tamaño} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, tamaño: t})} /><View style={styles.filaBotones}><TouchableOpacity style={styles.botonCancelarModal} onPress={() => setModalAnimalVisible(false)}><Text>Cancelar</Text></TouchableOpacity><TouchableOpacity style={styles.botonEnviarPedido} onPress={guardarPerrito}><Text style={styles.textoBotonBlanco}>Guardar</Text></TouchableOpacity></View></View></View>
-      </Modal>
+      {/* MODAL: EVALUACIÓN / DEVOLUCIÓN */}
       <Modal visible={modalEvaluacionVisible} animationType="fade" transparent={true}>
-        <View style={styles.modalContainer}><View style={styles.modalContent}><Text style={styles.modalTituloAzul}>Dejar una Devolución</Text><Text style={{marginBottom: 15, color: '#334155'}}>Cambio de estado a: <Text style={styles.negrita}>{nuevoEstado}</Text></Text><TextInput style={[styles.input, {height: 100, textAlignVertical: 'top'}]} placeholder="Escribe la nota..." multiline={true} value={notaDevolucion} onChangeText={setNotaDevolucion} /><View style={styles.filaBotones}><TouchableOpacity style={styles.botonCancelarModal} onPress={() => setModalEvaluacionVisible(false)}><Text>Cancelar</Text></TouchableOpacity><TouchableOpacity style={styles.botonEnviarPedido} onPress={guardarEvaluacion}><Text style={styles.textoBotonBlanco}>Guardar</Text></TouchableOpacity></View></View></View>
+        <View style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <Text style={s.modalTitulo}>Dejar una Devolución</Text>
+            <Text style={{marginBottom: 15, color: '#475569'}}>Cambio de estado a: <Text style={{fontWeight: '700', color: '#0f172a'}}>{nuevoEstado}</Text></Text>
+            <TextInput style={[s.input, {height: 100, textAlignVertical: 'top'}]} placeholder="Escribe la nota..." multiline={true} value={notaDevolucion} onChangeText={setNotaDevolucion} />
+            
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Button label="Cancelar" onPress={() => setModalEvaluacionVisible(false)} variant="secondary" style={{ flex: 1 }} />
+              <Button label="Guardar" onPress={guardarEvaluacion} variant="primary" style={{ flex: 1 }} />
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* MODAL: CARGAR ADOPTANTE ANTIGUO */}
       <Modal visible={modalManualVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.modalTituloAzul}>Cargar Registro Antiguo</Text>
+        <View style={s.modalOverlay}>
+          <ScrollView contentContainerStyle={s.modalSheet}>
+            <Text style={s.modalTitulo}>Cargar Registro Antiguo</Text>
             
-            <TextInput style={styles.input} placeholder="Nombre del Perro" value={datosManual.animalNombre} onChangeText={(t) => setDatosManual({...datosManual, animalNombre: t})} />
-            <TextInput style={styles.input} placeholder="Nombre del Adoptante" value={datosManual.adoptanteNombre} onChangeText={(t) => setDatosManual({...datosManual, adoptanteNombre: t})} />
-            <TextInput style={styles.input} placeholder="DNI del Adoptante" keyboardType="numeric" value={datosManual.adoptanteDni} onChangeText={(t) => setDatosManual({...datosManual, adoptanteDni: t})} />
-            <TextInput style={styles.input} placeholder="Teléfono" keyboardType="phone-pad" value={datosManual.adoptanteTelefono} onChangeText={(t) => setDatosManual({...datosManual, adoptanteTelefono: t})} />
-            <TextInput style={styles.input} placeholder="Fecha (Ej: Marzo 2023)" value={datosManual.fechaAdopcion} onChangeText={(t) => setDatosManual({...datosManual, fechaAdopcion: t})} />
+            <TextInput style={s.input} placeholder="Nombre del Perro" value={datosManual.animalNombre} onChangeText={(t) => setDatosManual({...datosManual, animalNombre: t})} />
+            <TextInput style={s.input} placeholder="Nombre del Adoptante" value={datosManual.adoptanteNombre} onChangeText={(t) => setDatosManual({...datosManual, adoptanteNombre: t})} />
+            <TextInput style={s.input} placeholder="DNI del Adoptante" keyboardType="numeric" value={datosManual.adoptanteDni} onChangeText={(t) => setDatosManual({...datosManual, adoptanteDni: t})} />
+            <TextInput style={s.input} placeholder="Teléfono" keyboardType="phone-pad" value={datosManual.adoptanteTelefono} onChangeText={(t) => setDatosManual({...datosManual, adoptanteTelefono: t})} />
+            <TextInput style={s.input} placeholder="Fecha (Ej: Marzo 2023)" value={datosManual.fechaAdopcion} onChangeText={(t) => setDatosManual({...datosManual, fechaAdopcion: t})} />
             
             <TextInput 
-              style={[styles.input, {height: 80, textAlignVertical: 'top'}]} 
+              style={[s.input, {height: 80, textAlignVertical: 'top'}]} 
               placeholder="Notas iniciales de seguimiento..." 
               multiline={true} 
               value={datosManual.notasSeguimiento} 
               onChangeText={(t) => setDatosManual({...datosManual, notasSeguimiento: t})} 
             />
 
-            <View style={styles.filaBotones}>
-              <TouchableOpacity style={styles.botonCancelarModal} onPress={() => setModalManualVisible(false)}>
-                <Text style={styles.textoBotonOscuro}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.botonEnviarPedido} onPress={guardarManual}>
-                <Text style={styles.textoBotonBlanco}>Guardar Registro</Text>
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Button label="Cancelar" onPress={() => setModalManualVisible(false)} variant="secondary" style={{ flex: 1 }} />
+              <Button label="Guardar Registro" onPress={guardarManual} variant="primary" style={{ flex: 1 }} />
             </View>
           </ScrollView>
         </View>
@@ -546,3 +544,114 @@ export default function Admin() {
   );
 }
 
+// Componente local para las tarjetas del menú
+function MenuCard({ title, icon, count, subtitle, onPress }: { title: string; icon: string; count: number; subtitle?: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={s.menuCard} onPress={onPress} activeOpacity={0.8}>
+      <Text style={s.menuIcon}>{icon}</Text>
+      <Text style={s.menuTitle}>{title}</Text>
+      <View style={s.menuCountBadge}>
+        <Text style={s.menuCountText}>{count}</Text>
+      </View>
+      {subtitle && <Text style={s.menuSubtitle}>{subtitle}</Text>}
+    </TouchableOpacity>
+  );
+}
+
+const s = StyleSheet.create({
+  header: {
+    padding: 24,
+    paddingTop: 50,
+    backgroundColor: '#1e3a8a',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  botonVolver: { position: 'absolute', left: 20, top: 52 },
+  textoVolver: { color: '#93c5fd', fontWeight: '600', fontSize: 14 },
+  titulo: { fontSize: 24, fontWeight: '800', color: '#ffffff' },
+  contenido: { padding: 20 },
+  
+  botonSincronizar: {
+    backgroundColor: '#eff6ff',
+    padding: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+  },
+  textoSincronizar: { color: '#1e40af', fontWeight: '700', fontSize: 14 },
+  
+  gridMenu: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
+  menuCard: {
+    backgroundColor: '#ffffff',
+    width: '48%',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  menuIcon: { fontSize: 32, marginBottom: 8 },
+  menuTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a', textAlign: 'center', marginBottom: 4 },
+  menuCountBadge: { backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 10, marginTop: 'auto' },
+  menuCountText: { fontSize: 12, fontWeight: '700', color: '#1e40af' },
+  menuSubtitle: { fontSize: 10, color: '#64748b', marginTop: 2 },
+  
+  botonCargaManual: {
+    backgroundColor: '#1e293b',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  textoCargaManual: { color: '#ffffff', fontWeight: '700', fontSize: 14 },
+  
+  // Animales
+  cardMini: { padding: 14, marginBottom: 8 },
+  nombreAnimal: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
+  detalleAnimal: { fontSize: 12, color: '#64748b' },
+  
+  // Filtros
+  filtroContainer: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  filtroBtn: { backgroundColor: '#f1f5f9', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  filtroBtnActivo: { backgroundColor: '#1e3a8a' },
+  filtroText: { fontSize: 13, color: '#475569', fontWeight: '600' },
+  filtroTextActivo: { color: '#ffffff' },
+  
+  // Modales
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitulo: { fontSize: 20, fontWeight: '800', color: '#0f172a', marginBottom: 15 },
+  labelFino: { fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6, marginTop: 10 },
+  input: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 15,
+    color: '#0f172a',
+    marginBottom: 10,
+    justifyContent: 'center',
+  },
+  filaBotonesSeleccion: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  botonSeleccion: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#f1f5f9' },
+  botonActivo: { backgroundColor: '#1e3a8a' },
+  textoActivo: { color: '#ffffff', fontWeight: '700' },
+  textoInactivo: { color: '#475569', fontWeight: '700' },
+});

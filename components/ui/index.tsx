@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
@@ -48,7 +47,7 @@ export function Button({
       disabled={disabled || loading}
       style={[
         btnStyles.base,
-        { backgroundColor: colors.bg, paddingVertical: size === 'sm' ? 8 : 12 },
+        { backgroundColor: colors.bg, paddingVertical: size === 'sm' ? 10 : 14 },
         (disabled || loading) && { opacity: 0.5 },
         style,
       ]}
@@ -66,8 +65,8 @@ export function Button({
 }
 
 const btnStyles = StyleSheet.create({
-  base: { borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  label: { fontWeight: '600' },
+  base: { borderRadius: 30, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  label: { fontWeight: '700' },
 });
 
 // ---- Badge ----
@@ -107,8 +106,8 @@ export function Badge({ status }: { status: string }) {
 }
 
 const badgeStyles = StyleSheet.create({
-  base: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  text: { fontSize: 12, fontWeight: '600' },
+  base: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  text: { fontSize: 12, fontWeight: '700' },
 });
 
 // ---- Card ----
@@ -135,14 +134,14 @@ export function Card({ children, accentColor, style }: CardProps) {
 const cardStyles = StyleSheet.create({
   base: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
 });
 
@@ -152,7 +151,7 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 const secStyles = StyleSheet.create({
-  title: { fontSize: 18, fontWeight: '700', color: '#0f172a', marginTop: 20, marginBottom: 10 },
+  title: { fontSize: 22, fontWeight: '800', color: '#0f172a', marginTop: 24, marginBottom: 12 },
 });
 
 // ---- EmptyState ----
@@ -165,13 +164,13 @@ export function EmptyState({ message }: { message: string }) {
 }
 
 const emptyStyles = StyleSheet.create({
-  container: { padding: 24, alignItems: 'center' },
-  text: { color: '#94a3b8', fontSize: 15, textAlign: 'center' },
+  container: { padding: 32, alignItems: 'center' },
+  text: { color: '#94a3b8', fontSize: 16, textAlign: 'center', fontWeight: '500' },
 });
 
 // ---- Divider ----
 export function Divider() {
-  return <View style={{ height: 1, backgroundColor: '#e2e8f0', marginVertical: 20 }} />;
+  return <View style={{ height: 1, backgroundColor: '#e2e8f0', marginVertical: 24 }} />;
 }
 
 // ---- RowActions ----

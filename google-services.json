@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "897321943435",
+    "project_id": "cuatro-patitas-fd509",
+    "storage_bucket": "cuatro-patitas-fd509.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:897321943435:android:7fabb8aa3121eca9d9ef8e",
+        "android_client_info": {
+          "package_name": "com.polinomicosorganization.cuatropatitas"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "897321943435-jc7pb4m4t420ca59imlng0ub3s4lsof1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCaIJn3u-rjySEt8jned2JC7I7zVDkewxo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "897321943435-jc7pb4m4t420ca59imlng0ub3s4lsof1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

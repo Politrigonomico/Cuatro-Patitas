@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, Platform } from 'react-native';
+import { Text, View, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, Platform } from 'react-native';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import app from '../../firebaseConfig'; 
 import { globalStyles as styles } from '../../constants/globalStyles';
@@ -102,7 +102,7 @@ export default function Admin() {
       setNuevaCampana({ fecha: '', lugar: '', cupo: '', estado: 'Abierta' });
       setModalCampanaVisible(false);
       cargarDatos();
-    } catch (error) { Alert.alert("Error", "No se pudo crear la campaña."); }
+    } catch { Alert.alert("Error", "No se pudo crear la campaña."); }
   };
 
   const guardarManual = async () => {
@@ -121,7 +121,7 @@ export default function Admin() {
       setModalManualVisible(false);
       setDatosManual({ animalNombre: '', adoptanteNombre: '', adoptanteDni: '', adoptanteTelefono: '', fechaAdopcion: '', notasSeguimiento: '' });
       cargarDatos();
-    } catch (error) { Alert.alert("Error", "No se pudo guardar."); }
+    } catch { Alert.alert("Error", "No se pudo guardar."); }
   };
 
   const guardarPerrito = async () => {
@@ -132,7 +132,7 @@ export default function Admin() {
       Alert.alert("¡Éxito!", "Agregado al catálogo.");
       setNuevoAnimal({ nombre: '', edad: '', tamaño: '', estado: 'En adopción', foto: 'url_de_prueba' });
       setModalAnimalVisible(false);
-    } catch (error) { Alert.alert("Error", "No se pudo guardar."); }
+    } catch { Alert.alert("Error", "No se pudo guardar."); }
   };
 
   const guardarTurnoWhatsApp = async () => {
@@ -150,7 +150,7 @@ export default function Admin() {
       setModalAgendarVisible(false);
       setDatosWhatsApp({ responsableNombre: '', responsableDni: '', responsableTelefono: '', animalNombre: '', animalEspecie: '', animalSexo: '' });
       cargarDatos();
-    } catch (error) { Alert.alert("Error", "No se pudo guardar."); }
+    } catch { Alert.alert("Error", "No se pudo guardar."); }
   };
 
   const abrirEvaluacion = (id: string, coleccion: string, estado: string) => {
@@ -254,7 +254,7 @@ export default function Admin() {
           const db = getFirestore(app);
           await deleteDoc(doc(db, coleccion, id));
           cargarDatos();
-        } catch (error) { Alert.alert("Error", "No se pudo borrar."); }
+        } catch { Alert.alert("Error", "No se pudo borrar."); }
       }
     } else {
       Alert.alert("Eliminar", "¿Seguro que quieres borrar este registro para siempre?", [
@@ -264,7 +264,7 @@ export default function Admin() {
               const db = getFirestore(app); 
               await deleteDoc(doc(db, coleccion, id)); 
               cargarDatos();
-            } catch (error) { Alert.alert("Error", "No se pudo borrar."); }
+            } catch { Alert.alert("Error", "No se pudo borrar."); }
           } 
         }
       ]);

@@ -44,7 +44,7 @@ export default function Adoptados() {
                   <Text style={{fontSize: 22, fontWeight: 'bold', color: '#065f46'}}>{pet.nombre}</Text>
                   <Text style={{color: '#374151', marginTop: 5}}>¡Ya vive con su nueva familia!</Text>
                   <View style={{backgroundColor: '#d1fae5', padding: 10, borderRadius: 8, marginTop: 10}}>
-                    <Text style={{color: '#065f46', fontStyle: 'italic'}}>"Gracias por darnos la oportunidad de cambiar una vida."</Text>
+                    <Text style={{color: '#065f46', fontStyle: 'italic'}}>&quot;Gracias por darnos la oportunidad de cambiar una vida.&quot;</Text>
                   </View>
                 </View>
               ))

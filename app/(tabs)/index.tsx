@@ -6,7 +6,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -59,11 +59,8 @@ export default function Index() {
 
   // CONSULTA DE TURNOS POR WHATSAPP
   const [modalConsultaVisible, setModalConsultaVisible] = useState(false);
-  const [telefonoConsulta, setTelefonoConsulta] = useState("");
   const [resultadosConsulta, setResultadosConsulta] = useState<any[]>([]);
   const [buscandoConsulta, setBuscandoConsulta] = useState(false);
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -97,13 +94,7 @@ export default function Index() {
     }, [])
   );
 
-  const formatearFechaAutomatica = (fecha: Date) => {
-  return fecha.toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long'
-  }).replace(/^\w/, (c) => c.toUpperCase()); // Pone la primera letra en mayúscula
-  };
+
 
   const avanzarPaso = () => {
     if (
@@ -149,7 +140,7 @@ export default function Index() {
       setDatosAdoptante({ nombreCompleto: '', dni: '', telefono: '', tipoVivienda: '',
        tienePatio: '', esAlquilado: '', quienesViven: '', todosDeAcuerdo: '', 
        tieneOtrasMascotas: '', horasSolo: '', acuerdoSeguimiento: '' });
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "No se pudo enviar la solicitud.");
     }
   };
@@ -187,7 +178,7 @@ export default function Index() {
         animalEspecie: "",
         animalSexo: "",
       });
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "No se pudo solicitar el turno.");
     }
   };
@@ -218,7 +209,7 @@ export default function Index() {
       } else {
         setResultadosConsulta(resultados);
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Hubo un problema en la búsqueda.");
     } finally {
       setBuscandoConsulta(false);

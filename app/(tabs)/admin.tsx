@@ -4,6 +4,8 @@ import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } 
 import app from '../../firebaseConfig'; 
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Button, SectionTitle, Card, Badge } from '../../components/ui';
+import * as ImagePicker from 'expo-image-picker';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { RequestCard } from '../../components/ui/RequestCard';
 import { CastrationCard } from '../../components/ui/CastrationCard';
 
@@ -31,7 +33,9 @@ export default function Admin() {
   const [modalCampanaVisible, setModalCampanaVisible] = useState(false); 
   
   // Estados de datos
-  const [nuevoAnimal, setNuevoAnimal] = useState({ nombre: '', edad: '', tamaño: '', estado: 'En adopción', foto: 'url_de_prueba' });
+  const [nuevoAnimal, setNuevoAnimal] = useState({ nombre: '', edad: '', tamaño: '', estado: 'En adopción', descripcion: '', fotos: [] as string[] });
+  const [imagenesSeleccionadas, setImagenesSeleccionadas] = useState<string[]>([]);
+  const [subiendoAnimal, setSubiendoAnimal] = useState(false);
   const [datosWhatsApp, setDatosWhatsApp] = useState({ responsableNombre: '', responsableDni: '', responsableTelefono: '', animalNombre: '', animalEspecie: '', animalSexo: '' });
   const [nuevaCampana, setNuevaCampana] = useState({ fecha: '', lugar: '', cupo: '', estado: 'Abierta' });
   const [datosManual, setDatosManual] = useState({ animalNombre: '', adoptanteNombre: '', adoptanteDni: '', adoptanteTelefono: '', fechaAdopcion: '', notasSeguimiento: '' });
@@ -108,16 +112,64 @@ export default function Admin() {
     } catch { Alert.alert("Error", "No se pudo guardar."); }
   };
 
+  const seleccionarImagenes = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: 2,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      const uris = result.assets.map(a => a.uri).slice(0, 2);
+      setImagenesSeleccionadas(uris);
+    }
+  };
+
   const guardarPerrito = async () => {
-    if (!nuevoAnimal.nombre || !nuevoAnimal.edad || !nuevoAnimal.tamaño) return Alert.alert("Atención", "Completa todos los datos.");
+    if (!nuevoAnimal.nombre || !nuevoAnimal.edad || !nuevoAnimal.tamaño || !nuevoAnimal.descripcion) {
+      return Alert.alert("Atención", "Completa todos los datos y la descripción.");
+    }
     try {
+      setSubiendoAnimal(true);
+      const storage = getStorage(app);
+      const urlsSubidas: string[] = [];
+
+      for (const uri of imagenesSeleccionadas) {
+        // En React Native, XMLHttpRequest es más confiable que fetch() para crear Blobs locales
+        const blob: Blob = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = function() { resolve(xhr.response); };
+          xhr.onerror = function(e) { reject(new TypeError('Network request failed')); };
+          xhr.responseType = 'blob';
+          xhr.open('GET', uri, true);
+          xhr.send(null);
+        });
+
+        const filename = `animales/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+        const storageRef = ref(storage, filename);
+        await uploadBytes(storageRef, blob);
+        const downloadUrl = await getDownloadURL(storageRef);
+        urlsSubidas.push(downloadUrl);
+      }
+
       const db = getFirestore(app);
-      await addDoc(collection(db, 'Animales'), nuevoAnimal);
+      const animalFinal = {
+        ...nuevoAnimal,
+        fotos: urlsSubidas,
+      };
+      
+      await addDoc(collection(db, 'Animales'), animalFinal);
       Alert.alert("¡Éxito!", "Agregado al catálogo.");
-      setNuevoAnimal({ nombre: '', edad: '', tamaño: '', estado: 'En adopción', foto: 'url_de_prueba' });
+      setNuevoAnimal({ nombre: '', edad: '', tamaño: '', estado: 'En adopción', descripcion: '', fotos: [] });
+      setImagenesSeleccionadas([]);
       setModalAnimalVisible(false);
       cargarDatos();
-    } catch { Alert.alert("Error", "No se pudo guardar."); }
+    } catch (e) { 
+      console.error(e);
+      Alert.alert("Error", "No se pudo guardar."); 
+    } finally {
+      setSubiendoAnimal(false);
+    }
   };
 
   const guardarTurnoWhatsApp = async () => {
@@ -482,17 +534,37 @@ export default function Admin() {
       {/* MODAL: NUEVO PERRITO */}
       <Modal visible={modalAnimalVisible} animationType="slide" transparent={true}>
         <View style={s.modalOverlay}>
-          <View style={s.modalSheet}>
-            <Text style={s.modalTitulo}>Nuevo Perrito</Text>
-            <TextInput style={s.input} placeholder="Nombre" value={nuevoAnimal.nombre} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, nombre: t})} />
-            <TextInput style={s.input} placeholder="Edad" value={nuevoAnimal.edad} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, edad: t})} />
-            <TextInput style={s.input} placeholder="Tamaño" value={nuevoAnimal.tamaño} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, tamaño: t})} />
+          <ScrollView contentContainerStyle={s.modalSheet}>
+            <Text style={s.modalTitulo}>Nuevo Animal</Text>
             
+            <Text style={s.labelFino}>Nombre</Text>
+            <TextInput style={s.input} placeholder="Ej: Firulais" value={nuevoAnimal.nombre} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, nombre: t})} />
+            
+            <Text style={s.labelFino}>Edad</Text>
+            <TextInput style={s.input} placeholder="Ej: 2 meses, 3 años" value={nuevoAnimal.edad} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, edad: t})} />
+            
+            <Text style={s.labelFino}>Tamaño</Text>
+            <TextInput style={s.input} placeholder="Pequeño, Mediano, Grande" value={nuevoAnimal.tamaño} onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, tamaño: t})} />
+            
+            <Text style={s.labelFino}>Descripción</Text>
+            <TextInput 
+              style={[s.input, {height: 80, textAlignVertical: 'top'}]} 
+              placeholder="¿Cómo es su personalidad? ¿Está vacunado?" 
+              multiline={true}
+              value={nuevoAnimal.descripcion} 
+              onChangeText={(t) => setNuevoAnimal({...nuevoAnimal, descripcion: t})} 
+            />
+
+            <Text style={s.labelFino}>Fotos (Máx 2)</Text>
+            <TouchableOpacity style={s.botonSincronizar} onPress={seleccionarImagenes}>
+              <Text style={s.textoSincronizar}>📷 Elegir Fotos ({imagenesSeleccionadas.length}/2)</Text>
+            </TouchableOpacity>
+
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <Button label="Cancelar" onPress={() => setModalAnimalVisible(false)} variant="secondary" style={{ flex: 1 }} />
-              <Button label="Guardar" onPress={guardarPerrito} variant="primary" style={{ flex: 1 }} />
+              <Button label="Cancelar" onPress={() => setModalAnimalVisible(false)} variant="secondary" style={{ flex: 1 }} disabled={subiendoAnimal} />
+              <Button label={subiendoAnimal ? "Guardando..." : "Guardar Animal"} onPress={guardarPerrito} variant="primary" style={{ flex: 1 }} disabled={subiendoAnimal} />
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 

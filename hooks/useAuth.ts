@@ -50,9 +50,12 @@ export function useAuth() {
   const saveDni = async (newDni: string) => {
     if (!user) return;
     await setDoc(doc(db, COLLECTIONS.USUARIOS, user.uid), {
+      uid: user.uid,
       dni: newDni,
       email: user.email,
       nombre: user.displayName ?? 'Usuario',
+      rol: 'usuario',
+      fecha_registro: new Date().toISOString()
     });
     setDniState(newDni);
   };
@@ -62,7 +65,7 @@ export function useAuth() {
   };
 
   const signUp = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
+    return await createUserWithEmailAndPassword(auth, email, password);
   };
 
   const signInWithGoogle = async () => {

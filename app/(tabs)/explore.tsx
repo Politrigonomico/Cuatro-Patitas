@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
 import app from '../../firebaseConfig';
 import { globalStyles as styles } from '../../constants/globalStyles';
 import { useFocusEffect } from 'expo-router';
-
+import emailjs from '@emailjs/react-native';
 
 export default function Perfil() {
   const { user, loading: authLoading, dni: dniHook, saveDni, signIn, signUp, signInWithGoogle, signOut } = useAuth();
@@ -17,7 +17,11 @@ export default function Perfil() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [dniRegistro, setDniRegistro] = useState('');
   const [esRegistro, setEsRegistro] = useState(false);
+  
+  // Estado para interceptar Google Login si falta DNI
+  const [necesitaDni, setNecesitaDni] = useState(false);
   
   const db = getFirestore(app);
 
@@ -42,11 +46,13 @@ export default function Perfil() {
     if (user && dniHook) {
       setDni(dniHook);
       cargarMisDatos(dniHook);
+      setNecesitaDni(false);
     } else if (user && !dniHook && !authLoading) {
-      setEditandoDni(true);
+      setNecesitaDni(true);
       setCargando(false);
     } else if (!user && !authLoading) {
       setCargando(false);
+      setNecesitaDni(false);
     }
   }, [user, dniHook, authLoading, cargarMisDatos]);
 
@@ -60,18 +66,105 @@ export default function Perfil() {
     } catch { Alert.alert("Error", "No se pudo guardar."); }
   };
 
+  // LÓGICA PARA GUARDAR DNI TRAS LOGIN CON GOOGLE
+  const guardarDniGoogle = async () => {
+    if (!dniRegistro) return Alert.alert("Error", "El DNI es obligatorio.");
+    setCargando(true);
+    try {
+      // 1. Verificar unicidad del DNI
+      const qUsuarios = query(collection(db, 'Usuarios'), where("dni", "==", dniRegistro));
+      const snapUsuarios = await getDocs(qUsuarios);
+      
+      if (!snapUsuarios.empty) {
+        setCargando(false);
+        return Alert.alert("Error", "El DNI ingresado ya está registrado con otra cuenta.");
+      }
+
+      // 2. Guardar en Firestore usando el hook (que ya actualiza estado)
+      await saveDni(dniRegistro);
+
+      // 3. Enviar correo con EmailJS
+      try {
+        const templateParams = {
+          to_email: user.email,
+          user_dni: dniRegistro,
+          subject: '¡Bienvenido a Cuatro Patitas!'
+        };
+
+        await emailjs.send(
+          'service_qiarh1e',
+          'template_atixtzk',
+          templateParams,
+          { publicKey: 'UXNkFYGoFoOO86qS3' }
+        );
+        console.log('Correo enviado exitosamente');
+      } catch (emailError) {
+        console.error('Error al enviar correo:', emailError);
+      }
+
+      Alert.alert("¡Éxito!", "Perfil completado.");
+      setNecesitaDni(false);
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
   // LÓGICA LOGIN EMAIL/CONTRASEÑA
   const handleAuth = async () => {
     if (!email || !password) return Alert.alert("Error", "Completa todos los campos");
+    
+    if (esRegistro && !dniRegistro) {
+      return Alert.alert("Error", "El DNI es obligatorio para registrarse.");
+    }
+
     setCargando(true);
     try {
       if (esRegistro) {
+        // 1. Verificar si el DNI ya existe en Firestore
+        const qUsuarios = query(collection(db, 'Usuarios'), where("dni", "==", dniRegistro));
+        const snapUsuarios = await getDocs(qUsuarios);
+        
+        if (!snapUsuarios.empty) {
+          setCargando(false);
+          return Alert.alert("Error", "El DNI ingresado ya está registrado con otra cuenta.");
+        }
+
+        // 2. Crear usuario en Firebase Auth
         await signUp(email, password);
+
+        // 3. Guardar en Firestore usando el hook
+        await saveDni(dniRegistro);
+
+        // 4. Enviar correo con EmailJS
+        try {
+          const templateParams = {
+            to_email: email,
+            user_dni: dniRegistro,
+            subject: '¡Bienvenido a Cuatro Patitas!'
+          };
+
+          await emailjs.send(
+            'service_qiarh1e',
+            'template_atixtzk',
+            templateParams,
+            { publicKey: 'UXNkFYGoFoOO86qS3' }
+          );
+          console.log('Correo enviado exitosamente');
+        } catch (emailError) {
+          console.error('Error al enviar correo:', emailError);
+        }
+
+        Alert.alert("¡Éxito!", "Cuenta creada correctamente.");
       } else {
         await signIn(email, password);
       }
-    } catch (error: any) { Alert.alert("Error", error.message); } 
-    finally { setCargando(false); }
+    } catch (error: any) { 
+      Alert.alert("Error", error.message); 
+    } finally { 
+      setCargando(false); 
+    }
   };
 
   // LÓGICA LOGIN GOOGLE
@@ -85,11 +178,33 @@ export default function Perfil() {
 
   const cerrarSesion = async () => {
     await signOut();
-    setDni(''); setMisTramites([]); setEmail(''); setPassword('');
+    setDni(''); setMisTramites([]); setEmail(''); setPassword(''); setDniRegistro(''); setNecesitaDni(false);
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useFocusEffect( React.useCallback(() => { if (dni) cargarMisDatos(dni); }, [dni]) );
+
+  // VISTA BLOQUEANTE PARA GOOGLE LOGIN SIN DNI
+  if (user && necesitaDni) {
+    return (
+      <View style={localStyles.containerLogin}>
+        <View style={localStyles.tarjetaLogin}>
+          <Text style={localStyles.tituloLogin}>Completa tu Perfil</Text>
+          <Text style={localStyles.subtituloLogin}>Para continuar, por favor ingresa tu DNI. Este campo es inmutable.</Text>
+          
+          <TextInput style={localStyles.inputLogin} placeholder="DNI" keyboardType="numeric" value={dniRegistro} onChangeText={setDniRegistro} />
+
+          <TouchableOpacity style={localStyles.botonLogin} onPress={guardarDniGoogle} disabled={cargando}>
+            {cargando ? <ActivityIndicator color="white" /> : <Text style={localStyles.textoBotonLogin}>Guardar y Continuar</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity style={{marginTop: 15, alignItems: 'center'}} onPress={cerrarSesion}>
+            <Text style={{color: '#ef4444', fontWeight: '600'}}>Cancelar y Salir</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (!user) {
     return (
@@ -100,6 +215,10 @@ export default function Perfil() {
           
           <TextInput style={localStyles.inputLogin} placeholder="Correo electrónico" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
           <TextInput style={localStyles.inputLogin} placeholder="Contraseña" secureTextEntry value={password} onChangeText={setPassword} />
+          
+          {esRegistro && (
+            <TextInput style={localStyles.inputLogin} placeholder="DNI (Inmutable)" keyboardType="numeric" value={dniRegistro} onChangeText={setDniRegistro} />
+          )}
 
           <TouchableOpacity style={localStyles.botonLogin} onPress={handleAuth} disabled={cargando}>
             {cargando ? <ActivityIndicator color="white" /> : <Text style={localStyles.textoBotonLogin}>{esRegistro ? 'Registrarse' : 'Ingresar con Correo'}</Text>}

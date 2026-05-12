@@ -10,7 +10,9 @@ export interface Animal {
   edad: string;
   tamaño: string;
   estado: 'En adopción' | 'Adoptado' | 'En tránsito';
-  foto?: string;
+  descripcion?: string;
+  fotos?: string[];
+  foto?: string; // Mantenemos foto temporalmente por compatibilidad hacia atrás
 }
 
 export interface DatosAdoptante {

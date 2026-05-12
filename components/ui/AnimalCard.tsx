@@ -3,7 +3,7 @@
 // Tarjeta de animal en adopción con botón para iniciar proceso.
 // ============================================================
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Image } from 'react-native';
 import type { Animal } from '../../types';
 import { Button, Card } from '../ui';
 
@@ -13,12 +13,21 @@ interface Props {
 }
 
 export function AnimalCard({ animal, onAdoptar }: Props) {
+  const tieneFoto = animal.fotos && animal.fotos.length > 0;
+  const imagenUrl = tieneFoto ? animal.fotos![0] : animal.foto;
+
   return (
     <Card style={s.card}>
+      {imagenUrl ? (
+        <Image source={{ uri: imagenUrl }} style={s.imagenCover} />
+      ) : null}
+      
       <View style={s.row}>
-        <View style={s.avatar}>
-          <Text style={s.avatarEmoji}>🐾</Text>
-        </View>
+        {!imagenUrl && (
+          <View style={s.avatar}>
+            <Text style={s.avatarEmoji}>🐾</Text>
+          </View>
+        )}
         <View style={s.info}>
           <Text style={s.nombre}>{animal.nombre}</Text>
           <View style={s.tagContainer}>
@@ -27,6 +36,13 @@ export function AnimalCard({ animal, onAdoptar }: Props) {
           </View>
         </View>
       </View>
+      
+      {animal.descripcion ? (
+        <Text style={s.descripcion} numberOfLines={2}>
+          "{animal.descripcion}"
+        </Text>
+      ) : null}
+
       <Button
         label="Quiero adoptarlo"
         onPress={() => onAdoptar(animal)}
@@ -38,7 +54,14 @@ export function AnimalCard({ animal, onAdoptar }: Props) {
 }
 
 const s = StyleSheet.create({
-  card: { padding: 20 },
+  card: { padding: 20, overflow: 'hidden' },
+  imagenCover: {
+    width: '100%',
+    height: 180,
+    borderRadius: 16,
+    marginBottom: 16,
+    backgroundColor: '#f1f5f9',
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   avatar: {
     width: 60,
@@ -56,4 +79,5 @@ const s = StyleSheet.create({
   tagContainer: { flexDirection: 'row', gap: 6, marginTop: 4 },
   tag: { backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   tagText: { fontSize: 12, color: '#475569', fontWeight: '600' },
+  descripcion: { fontSize: 14, color: '#64748b', marginTop: 12, fontStyle: 'italic', lineHeight: 20 },
 });

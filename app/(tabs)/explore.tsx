@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
+import { useAuth } from '../../hooks/useAuth';
 import app from '../../firebaseConfig';
 import { globalStyles as styles } from '../../constants/globalStyles';
 import { useFocusEffect } from 'expo-router';
 
 
 export default function Perfil() {
-  const [user, setUser] = useState<any>(null);
+  const { user, loading: authLoading, dni: dniHook, saveDni, signIn, signUp, signInWithGoogle, signOut } = useAuth();
+  
   const [dni, setDni] = useState('');
   const [editandoDni, setEditandoDni] = useState(false);
   const [misTramites, setMisTramites] = useState<any[]>([]);
@@ -18,68 +18,42 @@ export default function Perfil() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [esRegistro, setEsRegistro] = useState(false);
-
-  // CONFIGURACIÓN DE GOOGLE SIGN-IN
-  GoogleSignin.configure({
-    webClientId: '897321943435-jc7pb4m4t420ca59imlng0ub3s4lsof1.apps.googleusercontent.com', // ¡Pegá tu ID de cliente web aquí!
-  });
-
-  const auth = getAuth(app);
+  
   const db = getFirestore(app);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        verificarDniExistente(currentUser.uid);
-      } else {
-        setCargando(false);
-      }
-    });
-    return unsub;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const verificarDniExistente = async (uid: string) => {
-    try {
-      const userRef = doc(db, 'Usuarios', uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const dniGuardado = userSnap.data().dni;
-        setDni(dniGuardado);
-        cargarMisDatos(dniGuardado);
-      } else {
-        setEditandoDni(true);
-        setCargando(false);
-      }
-    } catch (error) { console.error(error); setCargando(false); }
-  };
-
-  const cargarMisDatos = async (dniUser: string) => {
+  const cargarMisDatos = React.useCallback(async (dniUser: string) => {
     setCargando(true);
     try {
       const resultados: any[] = [];
       const qCast = query(collection(db, 'Castraciones'), where("responsableDni", "==", dniUser));
       const snapCast = await getDocs(qCast);
-      snapCast.forEach(doc => resultados.push({ id: doc.id, tipo: 'Castración', ...doc.data() }));
+      snapCast.forEach(docSnap => resultados.push({ id: docSnap.id, tipo: 'Castración', ...docSnap.data() }));
 
       const qAdop = query(collection(db, 'Solicitudes_Adopciones'), where("datosAdoptante.dni", "==", dniUser));
       const snapAdop = await getDocs(qAdop);
-      snapAdop.forEach(doc => resultados.push({ id: doc.id, tipo: 'Adopción', ...doc.data() }));
+      snapAdop.forEach(docSnap => resultados.push({ id: docSnap.id, tipo: 'Adopción', ...docSnap.data() }));
 
       setMisTramites(resultados);
     } catch (error) { console.error(error); }
     finally { setCargando(false); }
-  };
+  }, [db]);
+
+  useEffect(() => {
+    if (user && dniHook) {
+      setDni(dniHook);
+      cargarMisDatos(dniHook);
+    } else if (user && !dniHook && !authLoading) {
+      setEditandoDni(true);
+      setCargando(false);
+    } else if (!user && !authLoading) {
+      setCargando(false);
+    }
+  }, [user, dniHook, authLoading, cargarMisDatos]);
 
   const guardarDniPerfil = async () => {
     if (dni.length < 7) return Alert.alert("Error", "Ingresa un DNI válido.");
     try {
-      await setDoc(doc(db, 'Usuarios', user.uid), {
-        dni: dni,
-        email: user.email,
-        nombre: user.displayName || 'Usuario'
-      });
+      await saveDni(dni);
       setEditandoDni(false);
       cargarMisDatos(dni);
       Alert.alert("¡Listo!", "DNI vinculado a tu cuenta.");
@@ -92,9 +66,9 @@ export default function Perfil() {
     setCargando(true);
     try {
       if (esRegistro) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await signUp(email, password);
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signIn(email, password);
       }
     } catch (error: any) { Alert.alert("Error", error.message); } 
     finally { setCargando(false); }
@@ -103,29 +77,14 @@ export default function Perfil() {
   // LÓGICA LOGIN GOOGLE
   const handleGoogleLogin = async () => {
     try {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      
-      if (response.type === 'success') {
-        const idToken = response.data.idToken;
-        
-        if (!idToken) throw new Error('No se pudo obtener el token de Google');
-        
-        // Creamos la credencial para Firebase
-        const googleCredential = GoogleAuthProvider.credential(idToken);
-        await signInWithCredential(auth, googleCredential);
-      } else if (response.type === 'cancelled') {
-        console.log('Login cancelado por el usuario');
-      }
-      
+      await signInWithGoogle();
     } catch (error: any) {
-      console.error(error);
-      Alert.alert("Error con Google", "Asegúrate de haber configurado el Web Client ID correctamente.");
+      Alert.alert("Error con Google", error.message);
     }
   };
 
   const cerrarSesion = async () => {
-    await signOut(auth);
+    await signOut();
     setDni(''); setMisTramites([]); setEmail(''); setPassword('');
   };
 

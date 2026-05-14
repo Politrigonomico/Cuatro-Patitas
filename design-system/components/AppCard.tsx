@@ -1,7 +1,6 @@
 /**
- * Cuatro Patitas - AppCard Component
+ * Cuatro Patitas - AppCard Component (CORREGIDO)
  * Tarjeta universal con múltiples variantes para web y mobile
- * Soporta: animal, solicitud, campaña, menú, estadística
  */
 
 import React from 'react';
@@ -16,30 +15,22 @@ import {
   ImageStyle,
   Platform,
 } from 'react-native';
-import { useTheme, getShadow, BorderRadius, Spacing } from '../tokens/Theme';
-import { AppText, H2, H3, H4, Body, BodySmall, Caption } from '../tokens/Typography';
-import { StatusBadge, StatusType } from './StatusBadge';
+import { useTheme, BorderRadius, Spacing, getShadow } from '../tokens/Theme';
+import { AppText, H3, H4, Body, BodySmall, Caption } from '../tokens/Typography';
+import { StatusBadge } from './StatusBadgeComponent';
+import type { StatusType } from './StatusBadgeComponent';
 
-// ─── TIPOS DE VARIANTE ───
 export type CardVariant = 
-  | 'animal'      // Tarjeta de animal en adopción
-  | 'request'     // Solicitud de adopción/castración
-  | 'campaign'    // Campaña de castración
-  | 'menu'        // Tarjeta del menú admin
-  | 'stat'        // Estadística/KPI
-  | 'adopted'     // Animal adoptado (final feliz)
-  | 'generic';    // Uso general
+  | 'animal' | 'request' | 'campaign' | 'menu' | 'stat' | 'adopted' | 'generic';
 
-// ─── PROPS BASE ───
 interface AppCardProps {
   variant: CardVariant;
   style?: ViewStyle;
   onPress?: () => void;
-  onLongPress?: () => void;
   children?: React.ReactNode;
 }
 
-// ─── PROPS ESPECÍFICAS POR VARIANTE ───
+// Props específicas por variante
 interface AnimalCardProps extends AppCardProps {
   variant: 'animal';
   imageUrl?: string;
@@ -102,22 +93,14 @@ interface AdoptedCardProps extends AppCardProps {
   quote?: string;
 }
 
-// Union type para todas las props
 export type CardProps = 
-  | AnimalCardProps 
-  | RequestCardProps 
-  | CampaignCardProps 
-  | MenuCardProps 
-  | StatCardProps 
-  | AdoptedCardProps 
-  | (AppCardProps & { variant: 'generic' });
+  | AnimalCardProps | RequestCardProps | CampaignCardProps | MenuCardProps 
+  | StatCardProps | AdoptedCardProps | (AppCardProps & { variant: 'generic' });
 
-// ─── COMPONENTE PRINCIPAL ───
 export const AppCard: React.FC<CardProps> = (props) => {
   const theme = useTheme();
   const isWeb = Platform.OS === 'web';
 
-  // Estilos base de la tarjeta
   const baseStyle: ViewStyle = {
     backgroundColor: theme.surface,
     borderRadius: BorderRadius['2xl'],
@@ -127,9 +110,7 @@ export const AppCard: React.FC<CardProps> = (props) => {
     ...getShadow('md', isWeb ? 'dark' : 'light'),
   };
 
-  // Hover effect para web
   const [isHovered, setIsHovered] = React.useState(false);
-
   const handleMouseEnter = () => isWeb && setIsHovered(true);
   const handleMouseLeave = () => isWeb && setIsHovered(false);
 
@@ -140,20 +121,13 @@ export const AppCard: React.FC<CardProps> = (props) => {
 
   const renderContent = () => {
     switch (props.variant) {
-      case 'animal':
-        return <AnimalContent {...props as AnimalCardProps} />;
-      case 'request':
-        return <RequestContent {...props as RequestCardProps} />;
-      case 'campaign':
-        return <CampaignContent {...props as CampaignCardProps} />;
-      case 'menu':
-        return <MenuContent {...props as MenuCardProps} />;
-      case 'stat':
-        return <StatContent {...props as StatCardProps} />;
-      case 'adopted':
-        return <AdoptedContent {...props as AdoptedCardProps} />;
-      default:
-        return props.children;
+      case 'animal': return <AnimalContent {...props as AnimalCardProps} />;
+      case 'request': return <RequestContent {...props as RequestCardProps} />;
+      case 'campaign': return <CampaignContent {...props as CampaignCardProps} />;
+      case 'menu': return <MenuContent {...props as MenuCardProps} />;
+      case 'stat': return <StatContent {...props as StatCardProps} />;
+      case 'adopted': return <AdoptedContent {...props as AdoptedCardProps} />;
+      default: return props.children;
     }
   };
 
@@ -161,9 +135,7 @@ export const AppCard: React.FC<CardProps> = (props) => {
     <TouchableOpacity
       activeOpacity={props.onPress ? 0.85 : 1}
       onPress={props.onPress}
-      onLongPress={props.onLongPress}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      {...(isWeb ? { onMouseEnter: handleMouseEnter, onMouseLeave: handleMouseLeave } : {}) as any}
       style={[baseStyle, hoverStyle, props.style]}
     >
       {renderContent()}
@@ -171,22 +143,13 @@ export const AppCard: React.FC<CardProps> = (props) => {
   );
 };
 
-// ─── CONTENIDO: ANIMAL ───
+// ─── ANIMAL ───
 const AnimalContent: React.FC<AnimalCardProps> = ({
-  imageUrl,
-  name,
-  breed,
-  age,
-  size,
-  gender,
-  status,
-  onAdoptar,
+  imageUrl, name, breed, age, size, gender, status, onAdoptar,
 }) => {
   const theme = useTheme();
-
   return (
     <View>
-      {/* Imagen */}
       <View style={styles.animalImageContainer}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.animalImage} />
@@ -198,31 +161,25 @@ const AnimalContent: React.FC<AnimalCardProps> = ({
         {gender && (
           <View style={[styles.genderBadge, { 
             backgroundColor: gender === 'male' ? '#DBEAFE' : '#FCE7F3',
-            borderColor: gender === 'male' ? '#3B82F6' : '#EC4899'
           }]}>
-            <Text style={{ fontSize: 12 }}>{gender === 'male' ? '♂' : '♀'}</Text>
+            <Text style={{ fontSize: 12, color: gender === 'male' ? '#3B82F6' : '#EC4899' }}>
+              {gender === 'male' ? '♂' : '♀'}
+            </Text>
           </View>
         )}
         {status && (
           <View style={styles.statusOverlay}>
-            <StatusBadge status={status} />
+            <StatusBadge status={status} size="sm" />
           </View>
         )}
       </View>
-
-      {/* Info */}
       <View style={styles.animalInfo}>
         <H3 numberOfLines={1}>{name}</H3>
         <View style={styles.animalMeta}>
           {breed && <Caption>{breed}</Caption>}
-          {age && (
-            <Caption color="tertiary"> • {age}</Caption>
-          )}
-          {size && (
-            <Caption color="tertiary"> • {size}</Caption>
-          )}
+          {age && <Caption color="tertiary"> • {age}</Caption>}
+          {size && <Caption color="tertiary"> • {size}</Caption>}
         </View>
-
         {onAdoptar && (
           <TouchableOpacity 
             style={[styles.adoptButton, { backgroundColor: theme.primary }]}
@@ -236,52 +193,35 @@ const AnimalContent: React.FC<AnimalCardProps> = ({
   );
 };
 
-// ─── CONTENIDO: SOLICITUD ───
+// ─── REQUEST (CORREGIDO) ───
 const RequestContent: React.FC<RequestCardProps> = ({
-  type,
-  applicantName,
-  animalName,
-  date,
-  status,
-  notes,
-  onApprove,
-  onReject,
-  onInfo,
-  onDelete,
+  type, applicantName, animalName, date, status, notes,
+  onApprove, onReject, onInfo, onDelete,
 }) => {
   const theme = useTheme();
-
   return (
     <View style={styles.requestContainer}>
-      {/* Header */}
       <View style={styles.requestHeader}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, marginRight: Spacing['2'] }}>
           <Body weight="semibold" numberOfLines={1}>{applicantName}</Body>
-          {animalName && (
-            <Caption>por {animalName}</Caption>
-          )}
+          {animalName && <Caption>por {animalName}</Caption>}
         </View>
-        <StatusBadge status={status} />
+        <StatusBadge status={status} size="sm" />
       </View>
-
-      {/* Meta */}
       <View style={styles.requestMeta}>
-        <Caption color="tertiary">{type === 'adoption' ? '🏠 Adopción' : '🏥 Castración'}</Caption>
-        <Caption color="tertiary"> • {date}</Caption>
+        <Caption color="tertiary">
+          {type === 'adoption' ? '🏠 Adopción' : '🏥 Castración'} • {date}
+        </Caption>
       </View>
-
-      {/* Notas */}
       {notes && (
         <View style={[styles.notesBox, { backgroundColor: theme.surfacePressed }]}>
           <Caption color="secondary" numberOfLines={2}>{notes}</Caption>
         </View>
       )}
-
-      {/* Acciones */}
       <View style={styles.requestActions}>
         {onApprove && (
           <TouchableOpacity 
-            style={[styles.actionBtn, { backgroundColor: theme.success + '20' }]}
+            style={[styles.actionBtn, { backgroundColor: theme.secondary + '20' }]}
             onPress={onApprove}
           >
             <BodySmall color="success" weight="semibold">✓ Aprobar</BodySmall>
@@ -313,14 +253,9 @@ const RequestContent: React.FC<RequestCardProps> = ({
   );
 };
 
-// ─── CONTENIDO: CAMPAÑA ───
+// ─── CAMPAIGN ───
 const CampaignContent: React.FC<CampaignCardProps> = ({
-  date,
-  location,
-  status,
-  slots,
-  totalSlots,
-  onDelete,
+  date, location, status, slots, totalSlots, onDelete,
 }) => {
   const theme = useTheme();
   const percentage = totalSlots && slots !== undefined 
@@ -330,12 +265,12 @@ const CampaignContent: React.FC<CampaignCardProps> = ({
   return (
     <View style={styles.campaignContainer}>
       <View style={styles.campaignHeader}>
-        <View>
+        <View style={{ flex: 1 }}>
           <H4>{date}</H4>
           <Caption color="secondary">{location}</Caption>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <StatusBadge status={status} />
+          <StatusBadge status={status} size="sm" />
           {onDelete && (
             <TouchableOpacity onPress={onDelete}>
               <Text>🗑️</Text>
@@ -343,8 +278,7 @@ const CampaignContent: React.FC<CampaignCardProps> = ({
           )}
         </View>
       </View>
-
-      {totalSlots && slots !== undefined && (
+      {totalSlots !== undefined && slots !== undefined && (
         <View style={styles.progressContainer}>
           <View style={[styles.progressBar, { backgroundColor: theme.surfacePressed }]}>
             <View style={[
@@ -356,7 +290,7 @@ const CampaignContent: React.FC<CampaignCardProps> = ({
             ]} />
           </View>
           <Caption color="tertiary">
-            {totalSlots - slots} de {totalSlots} cupos ocupados ({percentage}%)
+            {totalSlots - slots} de {totalSlots} cupos ({percentage}%)
           </Caption>
         </View>
       )}
@@ -364,14 +298,13 @@ const CampaignContent: React.FC<CampaignCardProps> = ({
   );
 };
 
-// ─── CONTENIDO: MENÚ ───
+// ─── MENU (CORREGIDO) ───
 const MenuContent: React.FC<MenuCardProps> = ({ icon, title, count, subtitle }) => {
   const theme = useTheme();
-
   return (
     <View style={styles.menuContainer}>
       <Text style={styles.menuIcon}>{icon}</Text>
-      <H4 align="center" style={{ marginTop: Spacing['2'] }}>{title}</H4>
+      <H4 align="center" style={{ marginTop: Spacing['2'] }} numberOfLines={2}>{title}</H4>
       <View style={[styles.menuBadge, { backgroundColor: theme.primaryLight }]}>
         <BodySmall color="primary" weight="bold">{count}</BodySmall>
       </View>
@@ -382,7 +315,7 @@ const MenuContent: React.FC<MenuCardProps> = ({ icon, title, count, subtitle }) 
   );
 };
 
-// ─── CONTENIDO: ESTADÍSTICA ───
+// ─── STAT (CORREGIDO) ───
 const StatContent: React.FC<StatCardProps> = ({ icon, label, value, trend, trendValue }) => {
   const theme = useTheme();
 
@@ -392,11 +325,7 @@ const StatContent: React.FC<StatCardProps> = ({ icon, label, value, trend, trend
     neutral: theme.textTertiary,
   };
 
-  const trendIcons = {
-    up: '↑',
-    down: '↓',
-    neutral: '→',
-  };
+  const trendIcons = { up: '↑', down: '↓', neutral: '→' };
 
   return (
     <View style={styles.statContainer}>
@@ -404,28 +333,21 @@ const StatContent: React.FC<StatCardProps> = ({ icon, label, value, trend, trend
         <Text style={{ fontSize: 24 }}>{icon}</Text>
         {trend && trendValue && (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: trendColors[trend], fontWeight: '600' }}>
+            <Text style={{ color: trendColors[trend], fontWeight: '600', fontSize: 12 }}>
               {trendIcons[trend]} {trendValue}
             </Text>
           </View>
         )}
       </View>
-      <H2 style={{ marginTop: Spacing['2'] }}>{value}</H2>
+      <Text style={[styles.statValue, { color: theme.textPrimary }]}>{value}</Text>
       <Caption color="secondary">{label}</Caption>
     </View>
   );
 };
 
-// ─── CONTENIDO: ADOPTADO ───
-const AdoptedContent: React.FC<AdoptedCardProps> = ({
-  imageUrl,
-  name,
-  familyName,
-  date,
-  quote,
-}) => {
+// ─── ADOPTED ───
+const AdoptedContent: React.FC<AdoptedCardProps> = ({ imageUrl, name, familyName, date, quote }) => {
   const theme = useTheme();
-
   return (
     <View>
       {imageUrl ? (
@@ -436,18 +358,12 @@ const AdoptedContent: React.FC<AdoptedCardProps> = ({
         </View>
       )}
       <View style={styles.adoptedInfo}>
-        <H3 color="success">{name}</H3>
-        {familyName && (
-          <BodySmall color="secondary">Con la familia {familyName}</BodySmall>
-        )}
-        {date && (
-          <Caption color="tertiary">Adoptado el {date}</Caption>
-        )}
+        <H3 color="secondary">{name}</H3>
+        {familyName && <BodySmall color="secondary">Con la familia {familyName}</BodySmall>}
+        {date && <Caption color="tertiary">Adoptado el {date}</Caption>}
         {quote && (
           <View style={[styles.quoteBox, { backgroundColor: theme.secondaryLight }]}>
-            <BodySmall color="secondary" style={{ fontStyle: 'italic' }}>
-              "{quote}"
-            </BodySmall>
+            <BodySmall color="secondary" style={{ fontStyle: 'italic' }}>"{quote}"</BodySmall>
           </View>
         )}
       </View>
@@ -455,162 +371,75 @@ const AdoptedContent: React.FC<AdoptedCardProps> = ({
   );
 };
 
-// ─── ESTILOS ───
+// ─── ESTILOS CORREGIDOS ───
 const styles = StyleSheet.create({
   // Animal
-  animalImageContainer: {
-    position: 'relative',
-    height: 200,
-    width: '100%',
-  },
-  animalImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  animalPlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  genderBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-  statusOverlay: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-  },
-  animalInfo: {
-    padding: Spacing['4'],
-  },
-  animalMeta: {
-    flexDirection: 'row',
-    marginTop: Spacing['1'],
-    flexWrap: 'wrap',
-  },
-  adoptButton: {
-    marginTop: Spacing['3'],
-    padding: Spacing['3'],
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-  },
+  animalImageContainer: { position: 'relative', height: 200, width: '100%' },
+  animalImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  animalPlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+  genderBadge: { position: 'absolute', top: 12, right: 12, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  statusOverlay: { position: 'absolute', bottom: 12, left: 12 },
+  animalInfo: { padding: Spacing['4'] },
+  animalMeta: { flexDirection: 'row', marginTop: Spacing['1'], flexWrap: 'wrap' },
+  adoptButton: { marginTop: Spacing['3'], padding: Spacing['3'], borderRadius: BorderRadius.lg, alignItems: 'center' },
 
   // Request
-  requestContainer: {
-    padding: Spacing['4'],
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing['2'],
-  },
-  requestMeta: {
-    flexDirection: 'row',
-    marginBottom: Spacing['3'],
-  },
-  notesBox: {
-    padding: Spacing['3'],
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing['3'],
-  },
-  requestActions: {
-    flexDirection: 'row',
-    gap: Spacing['2'],
-    flexWrap: 'wrap',
-  },
-  actionBtn: {
-    paddingVertical: Spacing['2'],
-    paddingHorizontal: Spacing['3'],
-    borderRadius: BorderRadius.md,
-  },
-  deleteBtn: {
-    marginLeft: 'auto',
-    padding: Spacing['2'],
-  },
+  requestContainer: { padding: Spacing['4'] },
+  requestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing['2'] },
+  requestMeta: { marginBottom: Spacing['3'] },
+  notesBox: { padding: Spacing['3'], borderRadius: BorderRadius.md, marginBottom: Spacing['3'] },
+  requestActions: { flexDirection: 'row', gap: Spacing['2'], flexWrap: 'wrap', alignItems: 'center' },
+  actionBtn: { paddingVertical: Spacing['2'], paddingHorizontal: Spacing['3'], borderRadius: BorderRadius.md },
+  deleteBtn: { marginLeft: 'auto', padding: Spacing['2'] },
 
   // Campaign
-  campaignContainer: {
-    padding: Spacing['4'],
-  },
-  campaignHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing['3'],
-  },
-  progressContainer: {
-    marginTop: Spacing['2'],
-  },
-  progressBar: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: Spacing['2'],
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
+  campaignContainer: { padding: Spacing['4'] },
+  campaignHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing['3'] },
+  progressContainer: { marginTop: Spacing['2'] },
+  progressBar: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: Spacing['2'] },
+  progressFill: { height: '100%', borderRadius: 3 },
 
-  // Menu
-  menuContainer: {
-    padding: Spacing['5'],
-    alignItems: 'center',
-    minWidth: 140,
+  // Menu (CORREGIDO - altura fija y centrado)
+  menuContainer: { 
+    padding: Spacing['5'], 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    minHeight: 160,
   },
-  menuIcon: {
-    fontSize: 32,
-    marginBottom: Spacing['2'],
-  },
-  menuBadge: {
-    marginTop: Spacing['2'],
-    paddingHorizontal: Spacing['3'],
-    paddingVertical: Spacing['1'],
+  menuIcon: { fontSize: 32, marginBottom: Spacing['2'] },
+  menuBadge: { 
+    marginTop: Spacing['3'], 
+    paddingHorizontal: Spacing['4'], 
+    paddingVertical: Spacing['1.5'], 
     borderRadius: BorderRadius.full,
+    minWidth: 40,
+    alignItems: 'center',
   },
 
-  // Stat
-  statContainer: {
+  // Stat (CORREGIDO - layout vertical claro)
+  statContainer: { 
     padding: Spacing['5'],
-    minWidth: 160,
-  },
-  statHeader: {
-    flexDirection: 'row',
+    minHeight: 120,
     justifyContent: 'space-between',
+  },
+  statHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
     alignItems: 'center',
+    marginBottom: Spacing['2'],
+  },
+  statValue: { 
+    fontSize: 32, 
+    fontWeight: '800', 
+    marginTop: Spacing['1'],
+    marginBottom: Spacing['1'],
   },
 
   // Adopted
-  adoptedImage: {
-    width: '100%',
-    height: 220,
-    resizeMode: 'cover',
-  },
-  adoptedPlaceholder: {
-    width: '100%',
-    height: 220,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  adoptedInfo: {
-    padding: Spacing['4'],
-  },
-  quoteBox: {
-    marginTop: Spacing['3'],
-    padding: Spacing['3'],
-    borderRadius: BorderRadius.lg,
-  },
+  adoptedImage: { width: '100%', height: 220, resizeMode: 'cover' },
+  adoptedPlaceholder: { width: '100%', height: 220, justifyContent: 'center', alignItems: 'center' },
+  adoptedInfo: { padding: Spacing['4'] },
+  quoteBox: { marginTop: Spacing['3'], padding: Spacing['3'], borderRadius: BorderRadius.lg },
 });
 
 export default AppCard;

@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Platform,
+  ViewStyle,
 } from "react-native";
 import {
   getFirestore,
@@ -41,6 +42,7 @@ import { EmptyState } from "../../design-system/components/EmptyState";
 // Existentes
 import app from "../../firebaseConfig";
 import { useFocusEffect } from "expo-router";
+import WebHeader from "../../components/ui/WebHeader";
 
 export default function Adoptados() {
   const theme = useTheme();
@@ -72,12 +74,13 @@ export default function Adoptados() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {isWeb && <WebHeader />}
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={[s.webContainer, isDesktop && { maxWidth: 1200 }]}>
+        <View style={[s.webContainer, isDesktop ? { maxWidth: 1200 } : null]}>
           {/* Header */}
           <View
             style={[
-              s.header,
+              s.header as ViewStyle,
               { backgroundColor: theme.secondary },
             ]}
           >
@@ -98,7 +101,7 @@ export default function Adoptados() {
             {!cargando && adoptados.length > 0 && (
               <View
                 style={[
-                  s.statsBanner,
+                  s.statsBanner as ViewStyle,
                   {
                     backgroundColor: theme.secondaryLight,
                     borderColor: theme.secondary,
@@ -136,7 +139,7 @@ export default function Adoptados() {
                   <View key={pet.id} style={s.gridItem}>
                     <AppCard
                       variant="adopted"
-                      imageUrl={pet.imagen}
+                      imageUrl={pet.foto}
                       name={pet.nombre}
                       familyName={pet.familiaAdoptiva || "anónima"}
                       date={pet.fechaAdopcion}
@@ -204,8 +207,8 @@ const s = StyleSheet.create({
     maxWidth: isDesktop ? 400 : "100%",
     ...Platform.select({
       web: {
-        minWidth: "unset",
-        maxWidth: "unset",
+        minWidth: undefined,
+        maxWidth: undefined,
       },
       default: {},
     }),

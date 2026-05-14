@@ -35,7 +35,7 @@ import {
 } from "../../design-system/tokens/Typography";
 import { AppCard } from "../../design-system/components/AppCard";
 import { AppButton } from "../../design-system/components/AppButton";
-import { StatusBadge } from "../../design-system/components/StatusBadge";
+import { StatusBadge } from "../../design-system/components/StatusBadgeComponent";
 import { SkeletonList } from "../../design-system/components/SkeletonCard";
 import { EmptyState } from "../../design-system/components/EmptyState";
 import { AppInput } from "../../design-system/components/AppInput";
@@ -48,6 +48,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { CastrationForm } from '../../components/forms/CastrationForm';
 import { AdoptionWizard } from '../../components/forms/AdoptionWizard';
 import WebHero from '../../components/ui/WebHero';
+import WebHeader from '../../components/ui/WebHeader';
 
 export default function Index() {
   const theme = useTheme();
@@ -100,10 +101,11 @@ export default function Index() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {isWeb && <WebHeader />}
       <ScrollView showsVerticalScrollIndicator={false}>
         {isWeb && <WebHero onAdoptarPress={() => {}} />}
 
-        <View style={[s.webContainer, isDesktop && { maxWidth: 1200 }]}>
+        <View style={[s.webContainer, isDesktop ? { maxWidth: 1200 } : null]}>
           {!isWeb && (
             <View style={[s.header, { backgroundColor: theme.primary }]}>
               <Hero color="inverse">Cuatro Patitas</Hero>
@@ -169,7 +171,7 @@ export default function Index() {
                   <View key={animal.id} style={s.itemCatalogo}>
                     <AppCard
                       variant="animal"
-                      imageUrl={animal.imagen}
+                      imageUrl={animal.foto}
                       name={animal.nombre}
                       breed={animal.raza}
                       age={animal.edad}

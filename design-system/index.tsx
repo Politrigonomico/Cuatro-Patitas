@@ -47,8 +47,8 @@ export type { CardVariant, CardProps } from './components/AppCard';
 export { AppButton, IconButton, ButtonGroup } from './components/AppButton';
 export type { ButtonVariant, ButtonSize } from './components/AppButton';
 
-export { StatusBadge, CountBadge } from './components/StatusBadge';
-export type { StatusType } from './components/StatusBadge';
+export { StatusBadge, CountBadge } from './components/StatusBadgeComponent';
+export type { StatusType } from './components/StatusBadgeComponent';
 
 export { 
   SkeletonBase, 

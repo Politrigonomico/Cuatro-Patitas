@@ -16,7 +16,7 @@ import {
 import { useTheme, Spacing, BorderRadius, getShadow, isWeb, isDesktop } from '../tokens/Theme';
 import { H3, Body, BodySmall, Caption } from '../tokens/Typography';
 import { IconButton } from './AppButton';
-import { CountBadge } from './StatusBadge';
+import { CountBadge } from './StatusBadgeComponent';
 
 // ─── TIPO DE NAVEGACIÓN ───
 export type NavItem = {

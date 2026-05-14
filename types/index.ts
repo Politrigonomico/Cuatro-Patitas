@@ -10,9 +10,14 @@ export interface Animal {
   edad: string;
   tamaño: string;
   estado: 'En adopción' | 'Adoptado' | 'En tránsito';
+  raza?: string;
+  sexo?: string;
   descripcion?: string;
   fotos?: string[];
   foto?: string; // Mantenemos foto temporalmente por compatibilidad hacia atrás
+  familiaAdoptiva?: string;
+  fechaAdopcion?: string;
+  testimonio?: string;
 }
 
 export interface DatosAdoptante {
@@ -37,6 +42,7 @@ export interface Solicitud {
   notaDevolucion: string;
   userEmail?: string;
   datosAdoptante: DatosAdoptante;
+  fechaSolicitud?: string;
 }
 
 export interface Seguimiento {
@@ -61,6 +67,7 @@ export interface Castracion {
   estadoTurno: 'Pendiente' | 'Aprobado' | 'Rechazado' | 'Lista de Espera';
   notaDevolucion: string;
   campanaId?: string;
+  fechaSolicitud?: string;
 }
 
 export interface Campana {

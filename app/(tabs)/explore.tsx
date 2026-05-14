@@ -32,22 +32,21 @@ import {
   isDesktop,
 } from "../../design-system/tokens/Theme";
 import {
-  Hero,
-  H1,
   H2,
   H3,
+  H4,
   Body,
   BodySmall,
   Caption,
 } from "../../design-system/tokens/Typography";
-import { AppCard } from "../../design-system/components/AppCard";
 import { AppButton, IconButton } from "../../design-system/components/AppButton";
-import { StatusBadge } from "../../design-system/components/StatusBadge";
+import { StatusBadge } from "../../design-system/components/StatusBadgeComponent";
 import { SkeletonList } from "../../design-system/components/SkeletonCard";
 import { EmptyState } from "../../design-system/components/EmptyState";
 import { AppInput } from "../../design-system/components/AppInput";
 
 // Existentes
+import WebHeader from "../../components/ui/WebHeader";
 import app from "../../firebaseConfig";
 import { useAuth } from "../../hooks/useAuth";
 import { useFocusEffect } from "expo-router";
@@ -85,56 +84,25 @@ export default function Perfil() {
       setNecesitaDni(false);
       setCargando(true);
 
-      const qCast = query(
-        collection(db, "Castraciones"),
-        where("responsableDni", "==", dniHook)
-      );
-      const qAdop = query(
-        collection(db, "Solicitudes_Adopciones"),
-        where("datosAdoptante.dni", "==", dniHook)
-      );
+      const qCast = query(collection(db, "Castraciones"), where("responsableDni", "==", dniHook));
+      const qAdop = query(collection(db, "Solicitudes_Adopciones"), where("datosAdoptante.dni", "==", dniHook));
 
       let castraciones: any[] = [];
       let adopciones: any[] = [];
 
-      const unsubCast = onSnapshot(
-        qCast,
-        (snap) => {
-          castraciones = snap.docs.map((docSnap) => ({
-            id: docSnap.id,
-            tipo: "Castración",
-            ...docSnap.data(),
-          }));
-          setMisTramites([...castraciones, ...adopciones]);
-          setCargando(false);
-        },
-        (error) => {
-          console.error(error);
-          setCargando(false);
-        }
-      );
+      const unsubCast = onSnapshot(qCast, (snap) => {
+        castraciones = snap.docs.map((docSnap) => ({ id: docSnap.id, tipo: "Castración", ...docSnap.data() }));
+        setMisTramites([...castraciones, ...adopciones]);
+        setCargando(false);
+      }, (error) => { console.error(error); setCargando(false); });
 
-      const unsubAdop = onSnapshot(
-        qAdop,
-        (snap) => {
-          adopciones = snap.docs.map((docSnap) => ({
-            id: docSnap.id,
-            tipo: "Adopción",
-            ...docSnap.data(),
-          }));
-          setMisTramites([...castraciones, ...adopciones]);
-          setCargando(false);
-        },
-        (error) => {
-          console.error(error);
-          setCargando(false);
-        }
-      );
+      const unsubAdop = onSnapshot(qAdop, (snap) => {
+        adopciones = snap.docs.map((docSnap) => ({ id: docSnap.id, tipo: "Adopción", ...docSnap.data() }));
+        setMisTramites([...castraciones, ...adopciones]);
+        setCargando(false);
+      }, (error) => { console.error(error); setCargando(false); });
 
-      return () => {
-        unsubCast();
-        unsubAdop();
-      };
+      return () => { unsubCast(); unsubAdop(); };
     } else if (user && !dniHook && !authLoading && !isAdmin) {
       setNecesitaDni(true);
       setCargando(false);
@@ -152,8 +120,7 @@ export default function Perfil() {
         style: "destructive",
         onPress: async () => {
           try {
-            const coleccion =
-              tipo === "Castración" ? "Castraciones" : "Solicitudes_Adopciones";
+            const coleccion = tipo === "Castración" ? "Castraciones" : "Solicitudes_Adopciones";
             await deleteDoc(doc(db, coleccion, id));
           } catch (error) {
             console.error(error);
@@ -179,18 +146,12 @@ export default function Perfil() {
     if (!dniRegistro) return Alert.alert("Error", "El DNI es obligatorio.");
     setCargando(true);
     try {
-      const qUsuarios = query(
-        collection(db, "Usuarios"),
-        where("dni", "==", dniRegistro)
-      );
+      const qUsuarios = query(collection(db, "Usuarios"), where("dni", "==", dniRegistro));
       const snapUsuarios = await getDocs(qUsuarios);
 
       if (!snapUsuarios.empty) {
         setCargando(false);
-        return Alert.alert(
-          "Error",
-          "El DNI ingresado ya está registrado con otra cuenta."
-        );
+        return Alert.alert("Error", "El DNI ingresado ya está registrado con otra cuenta.");
       }
 
       await saveDni(dniRegistro);
@@ -199,11 +160,7 @@ export default function Perfil() {
         await emailjs.send(
           "service_qiarh1e",
           "template_atixtzk",
-          {
-            to_email: user!.email,
-            user_dni: dniRegistro,
-            subject: "¡Bienvenido a Cuatro Patitas!",
-          },
+          { to_email: user!.email, user_dni: dniRegistro, subject: "¡Bienvenido a Cuatro Patitas!" },
           { publicKey: "UXNkFYGoFoOO86qS3" }
         );
       } catch (emailError) {
@@ -220,8 +177,7 @@ export default function Perfil() {
   };
 
   const handleAuth = async () => {
-    if (!email || !password)
-      return Alert.alert("Error", "Completa todos los campos");
+    if (!email || !password) return Alert.alert("Error", "Completa todos los campos");
     if (esRegistro && !dniRegistro) {
       return Alert.alert("Error", "El DNI es obligatorio para registrarse.");
     }
@@ -229,18 +185,12 @@ export default function Perfil() {
     setCargando(true);
     try {
       if (esRegistro) {
-        const qUsuarios = query(
-          collection(db, "Usuarios"),
-          where("dni", "==", dniRegistro)
-        );
+        const qUsuarios = query(collection(db, "Usuarios"), where("dni", "==", dniRegistro));
         const snapUsuarios = await getDocs(qUsuarios);
 
         if (!snapUsuarios.empty) {
           setCargando(false);
-          return Alert.alert(
-            "Error",
-            "El DNI ingresado ya está registrado con otra cuenta."
-          );
+          return Alert.alert("Error", "El DNI ingresado ya está registrado con otra cuenta.");
         }
 
         await signUp(email, password);
@@ -250,11 +200,7 @@ export default function Perfil() {
           await emailjs.send(
             "service_qiarh1e",
             "template_atixtzk",
-            {
-              to_email: email,
-              user_dni: dniRegistro,
-              subject: "¡Bienvenido a Cuatro Patitas!",
-            },
+            { to_email: email, user_dni: dniRegistro, subject: "¡Bienvenido a Cuatro Patitas!" },
             { publicKey: "UXNkFYGoFoOO86qS3" }
           );
         } catch (emailError) {
@@ -295,11 +241,11 @@ export default function Perfil() {
     return (
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={[s.containerLogin, { backgroundColor: theme.background }]}
+        style={[styles.containerLogin, { backgroundColor: theme.background }]}
       >
         <View
           style={[
-            s.tarjetaLogin,
+            styles.tarjetaLogin,
             {
               backgroundColor: theme.surface,
               borderColor: theme.border,
@@ -307,14 +253,8 @@ export default function Perfil() {
             },
           ]}
         >
-          <H2 color="primary" align="center">
-            Completa tu Perfil
-          </H2>
-          <BodySmall
-            color="secondary"
-            align="center"
-            style={{ marginVertical: Spacing["4"] }}
-          >
+          <H2 color="primary" align="center">Completa tu Perfil</H2>
+          <BodySmall color="secondary" align="center" style={{ marginVertical: Spacing["4"] }}>
             Para continuar, por favor ingresa tu DNI. Este campo es inmutable.
           </BodySmall>
 
@@ -335,13 +275,8 @@ export default function Perfil() {
             style={{ marginTop: Spacing["4"] }}
           />
 
-          <TouchableOpacity
-            style={{ marginTop: Spacing["4"], alignItems: "center" }}
-            onPress={cerrarSesion}
-          >
-            <Body weight="semibold" color="error">
-              Cancelar y Salir
-            </Body>
+          <TouchableOpacity style={{ marginTop: Spacing["4"], alignItems: "center" }} onPress={cerrarSesion}>
+            <Body weight="semibold" color="error">Cancelar y Salir</Body>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -351,12 +286,10 @@ export default function Perfil() {
   // ─── VISTA: LOGIN ───
   if (!user) {
     return (
-      <View
-        style={[s.containerLogin, { backgroundColor: theme.background }]}
-      >
+      <View style={[styles.containerLogin, { backgroundColor: theme.background }]}>
         <View
           style={[
-            s.tarjetaLogin,
+            styles.tarjetaLogin,
             {
               backgroundColor: theme.surface,
               borderColor: theme.border,
@@ -364,14 +297,8 @@ export default function Perfil() {
             },
           ]}
         >
-          <H2 color="primary" align="center">
-            {esRegistro ? "Crear Cuenta" : "Inicia Sesión"}
-          </H2>
-          <BodySmall
-            color="secondary"
-            align="center"
-            style={{ marginVertical: Spacing["4"] }}
-          >
+          <H2 color="primary" align="center">{esRegistro ? "Crear Cuenta" : "Inicia Sesión"}</H2>
+          <BodySmall color="secondary" align="center" style={{ marginVertical: Spacing["4"] }}>
             Debes estar conectado para gestionar tus adopciones y turnos.
           </BodySmall>
 
@@ -415,12 +342,10 @@ export default function Perfil() {
           />
 
           {/* Divider */}
-          <View style={s.divider}>
-            <View style={[s.dividerLine, { backgroundColor: theme.border }]} />
-            <Caption color="tertiary" style={{ marginHorizontal: Spacing["3"] }}>
-              o
-            </Caption>
-            <View style={[s.dividerLine, { backgroundColor: theme.border }]} />
+          <View style={styles.divider}>
+            <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            <Caption color="tertiary" style={{ marginHorizontal: Spacing["3"] }}>o</Caption>
+            <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
           </View>
 
           <AppButton
@@ -435,9 +360,7 @@ export default function Perfil() {
             onPress={() => setEsRegistro(!esRegistro)}
           >
             <Body weight="semibold" color="primary">
-              {esRegistro
-                ? "¿Ya tienes cuenta? Inicia sesión"
-                : "¿No tienes cuenta? Regístrate"}
+              {esRegistro ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate"}
             </Body>
           </TouchableOpacity>
         </View>
@@ -448,34 +371,25 @@ export default function Perfil() {
   // ─── VISTA: PERFIL LOGUEADO ───
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {isWeb && <WebHeader />}
 
-      <View style={[s.webContainer, isDesktop && { maxWidth: 1200 }]}>
+      <View style={[styles.webContainer, isDesktop ? { maxWidth: 1200 } : null]}>
         {/* Header Perfil */}
-        <View
-          style={[
-            s.headerPerfil,
-            { backgroundColor: theme.primary },
-          ]}
-        >
-          <View>
+        <View style={[styles.headerPerfil, { backgroundColor: theme.primary }]}>
+          <View style={{ flex: 1 }}>
             <H2 color="inverse">Mi Perfil</H2>
             <BodySmall color="inverse" style={{ opacity: 0.9, marginTop: Spacing["1"] }}>
               {user.email}
             </BodySmall>
           </View>
-          <AppButton
-            label="Salir"
-            variant="ghost"
-            size="sm"
-            onPress={cerrarSesion}
-          />
+          <AppButton label="Salir" variant="ghost" size="sm" onPress={cerrarSesion} />
         </View>
 
-        <ScrollView contentContainerStyle={s.contenidoPerfil}>
+        <ScrollView contentContainerStyle={styles.contenidoPerfil}>
           {/* DNI Card */}
           <View
             style={[
-              s.cajaDni,
+              styles.cajaDni,
               {
                 backgroundColor: theme.surface,
                 borderColor: theme.border,
@@ -483,21 +397,11 @@ export default function Perfil() {
               },
             ]}
           >
-            <Caption
-              weight="semibold"
-              color="secondary"
-              style={{ textTransform: "uppercase", letterSpacing: 0.5 }}
-            >
+            <Caption weight="semibold" color="secondary" style={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
               DNI vinculado
             </Caption>
             {editandoDni ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  marginTop: Spacing["3"],
-                  alignItems: "center",
-                }}
-              >
+              <View style={{ flexDirection: "row", marginTop: Spacing["3"], alignItems: "center" }}>
                 <AppInput
                   placeholder="Tu DNI"
                   keyboardType="numeric"
@@ -506,28 +410,13 @@ export default function Perfil() {
                   variant="filled"
                   style={{ flex: 1, marginBottom: 0 }}
                 />
-                <IconButton
-                  icon="✓"
-                  variant="primary"
-                  size="md"
-                  onPress={guardarDniPerfil}
-                  style={{ marginLeft: Spacing["2"] }}
-                />
+                <IconButton icon="✓" variant="primary" size="md" onPress={guardarDniPerfil} style={{ marginLeft: Spacing["2"] }} />
               </View>
             ) : (
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginTop: Spacing["2"],
-                }}
-              >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing["2"] }}>
                 <H3 color="primary">{dni || "No vinculado"}</H3>
                 <TouchableOpacity onPress={() => setEditandoDni(true)}>
-                  <Body weight="semibold" color="primary">
-                    Cambiar
-                  </Body>
+                  <Body weight="semibold" color="primary">Cambiar</Body>
                 </TouchableOpacity>
               </View>
             )}
@@ -541,12 +430,12 @@ export default function Perfil() {
           ) : misTramites.length === 0 ? (
             <EmptyState type="empty-profile" />
           ) : (
-            <View style={s.grillaTramites}>
+            <View style={styles.listaTramites}>
               {misTramites.map((item) => (
                 <View
                   key={item.id}
                   style={[
-                    s.tarjetaTramite,
+                    styles.tarjetaTramite,
                     {
                       backgroundColor: theme.surface,
                       borderColor: theme.border,
@@ -554,35 +443,12 @@ export default function Perfil() {
                     },
                   ]}
                 >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: Spacing["3"],
-                    }}
-                  >
-                    <Body weight="semibold" color="primary">
-                      {item.tipo}
-                    </Body>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: Spacing["2"],
-                      }}
-                    >
-                      <StatusBadge
-                        status={item.estadoTurno || item.estadoSolicitud}
-                        size="sm"
-                      />
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing["3"] }}>
+                    <Body weight="semibold" color="primary">{item.tipo}</Body>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing["2"] }}>
+                      <StatusBadge status={item.estadoTurno || item.estadoSolicitud} size="sm" />
                       {isAdmin && (
-                        <IconButton
-                          icon="🗑️"
-                          variant="ghost"
-                          size="sm"
-                          onPress={() => borrarGestion(item.id, item.tipo)}
-                        />
+                        <IconButton icon="🗑️" variant="ghost" size="sm" onPress={() => borrarGestion(item.id, item.tipo)} />
                       )}
                     </View>
                   </View>
@@ -602,8 +468,8 @@ export default function Perfil() {
   );
 }
 
-// ─── ESTILOS ───
-const s = StyleSheet.create({
+// ─── ESTILOS CORREGIDOS ───
+const styles = StyleSheet.create({
   webContainer: {
     width: "100%",
     maxWidth: 1024,
@@ -654,25 +520,14 @@ const s = StyleSheet.create({
     borderWidth: 1,
     marginBottom: Spacing["6"],
   },
-  grillaTramites: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing["4"],
+  // Lista vertical simple (más confiable que grid)
+  listaTramites: {
+    gap: Spacing["3"],
   },
   tarjetaTramite: {
-    flex: 1,
-    minWidth: 280,
-    maxWidth: isDesktop ? 380 : "100%",
     padding: Spacing["4"],
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    ...Platform.select({
-      web: {
-        minWidth: "unset",
-        maxWidth: "unset",
-        width: "calc(50% - 12px)",
-      },
-      default: {},
-    }),
+    width: "100%",
   },
 });

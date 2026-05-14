@@ -3,7 +3,7 @@
 // Tarjeta de animal en adopción con botón para iniciar proceso.
 // ============================================================
 import React from 'react';
-import { StyleSheet, Text, View, Image } from 'react-native';
+import { StyleSheet, Text, View, Image, Platform } from 'react-native';
 import type { Animal } from '../../types';
 import { Button, Card } from '../ui';
 
@@ -54,7 +54,13 @@ export function AnimalCard({ animal, onAdoptar }: Props) {
 }
 
 const s = StyleSheet.create({
-  card: { padding: 20, overflow: 'hidden' },
+  card: { 
+    padding: 20, 
+    overflow: 'hidden',
+    flex: 1,
+    minWidth: 300,
+    maxWidth: Platform.OS === 'web' ? 400 : '100%',
+  },
   imagenCover: {
     width: '100%',
     height: 180,

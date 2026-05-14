@@ -32,7 +32,8 @@ export async function getSolicitudesByDni(dni: string): Promise<Solicitud[]> {
 export async function addSolicitud(
   animalId: string,
   animalNombre: string,
-  datos: DatosAdoptante
+  datos: DatosAdoptante,
+  userEmail?: string
 ): Promise<void> {
   await addDoc(collection(db, COLLECTIONS.SOLICITUDES), {
     animalId,
@@ -40,6 +41,7 @@ export async function addSolicitud(
     datosAdoptante: datos,
     estadoSolicitud: 'Pendiente',
     notaDevolucion: '',
+    userEmail: userEmail || '',
   });
 }
 

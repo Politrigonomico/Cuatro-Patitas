@@ -35,6 +35,7 @@ export interface Solicitud {
   animalNombre: string;
   estadoSolicitud: 'Pendiente' | 'Aprobado' | 'Rechazado' | 'Requiere Info';
   notaDevolucion: string;
+  userEmail?: string;
   datosAdoptante: DatosAdoptante;
 }
 

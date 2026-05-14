@@ -29,12 +29,24 @@ interface Props {
   animal: Animal | null;
   onSubmit: (animalId: string, animalNombre: string, datos: DatosAdoptante) => Promise<void>;
   onClose: () => void;
+  user?: any;
+  dni?: string;
 }
 
-export function AdoptionWizard({ visible, animal, onSubmit, onClose }: Props) {
+export function AdoptionWizard({ visible, animal, onSubmit, onClose, user, dni }: Props) {
   const [paso, setPaso] = useState(1);
   const [datos, setDatos] = useState<DatosAdoptante>(INITIAL_DATOS);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (visible && user) {
+      setDatos((prev) => ({
+        ...prev,
+        nombreCompleto: user.displayName || prev.nombreCompleto,
+        dni: dni || prev.dni,
+      }));
+    }
+  }, [visible, user, dni]);
 
   const set = (key: keyof DatosAdoptante, val: string) =>
     setDatos((prev) => ({ ...prev, [key]: val }));
@@ -189,13 +201,23 @@ const fieldS = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
+  overlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(15,23,42,0.55)', 
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
+    padding: Platform.OS === 'web' ? 20 : 0,
+  },
   sheet: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
+    borderBottomLeftRadius: Platform.OS === 'web' ? 28 : 0,
+    borderBottomRightRadius: Platform.OS === 'web' ? 28 : 0,
+    width: Platform.OS === 'web' ? '100%' : 'auto',
+    maxWidth: Platform.OS === 'web' ? 500 : '100%',
     padding: 24,
-    paddingBottom: 36,
+    paddingBottom: Platform.OS === 'web' ? 24 : 36,
     maxHeight: '90%',
   },
   header: { marginBottom: 20 },

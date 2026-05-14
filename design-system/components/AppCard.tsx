@@ -1,0 +1,616 @@
+/**
+ * Cuatro Patitas - AppCard Component
+ * Tarjeta universal con múltiples variantes para web y mobile
+ * Soporta: animal, solicitud, campaña, menú, estadística
+ */
+
+import React from 'react';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
+  Platform,
+} from 'react-native';
+import { useTheme, getShadow, BorderRadius, Spacing } from '../tokens/Theme';
+import { AppText, H2, H3, H4, Body, BodySmall, Caption } from '../tokens/Typography';
+import { StatusBadge, StatusType } from './StatusBadge';
+
+// ─── TIPOS DE VARIANTE ───
+export type CardVariant = 
+  | 'animal'      // Tarjeta de animal en adopción
+  | 'request'     // Solicitud de adopción/castración
+  | 'campaign'    // Campaña de castración
+  | 'menu'        // Tarjeta del menú admin
+  | 'stat'        // Estadística/KPI
+  | 'adopted'     // Animal adoptado (final feliz)
+  | 'generic';    // Uso general
+
+// ─── PROPS BASE ───
+interface AppCardProps {
+  variant: CardVariant;
+  style?: ViewStyle;
+  onPress?: () => void;
+  onLongPress?: () => void;
+  children?: React.ReactNode;
+}
+
+// ─── PROPS ESPECÍFICAS POR VARIANTE ───
+interface AnimalCardProps extends AppCardProps {
+  variant: 'animal';
+  imageUrl?: string;
+  name: string;
+  breed?: string;
+  age?: string;
+  size?: string;
+  gender?: 'male' | 'female';
+  status?: StatusType;
+  onAdoptar?: () => void;
+}
+
+interface RequestCardProps extends AppCardProps {
+  variant: 'request';
+  type: 'adoption' | 'castration';
+  applicantName: string;
+  animalName?: string;
+  date: string;
+  status: StatusType;
+  notes?: string;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onInfo?: () => void;
+  onDelete?: () => void;
+}
+
+interface CampaignCardProps extends AppCardProps {
+  variant: 'campaign';
+  date: string;
+  location: string;
+  status: StatusType;
+  slots?: number;
+  totalSlots?: number;
+  onDelete?: () => void;
+}
+
+interface MenuCardProps extends AppCardProps {
+  variant: 'menu';
+  icon: string;
+  title: string;
+  count: number;
+  subtitle?: string;
+}
+
+interface StatCardProps extends AppCardProps {
+  variant: 'stat';
+  icon: string;
+  label: string;
+  value: string | number;
+  trend?: 'up' | 'down' | 'neutral';
+  trendValue?: string;
+}
+
+interface AdoptedCardProps extends AppCardProps {
+  variant: 'adopted';
+  imageUrl?: string;
+  name: string;
+  familyName?: string;
+  date?: string;
+  quote?: string;
+}
+
+// Union type para todas las props
+export type CardProps = 
+  | AnimalCardProps 
+  | RequestCardProps 
+  | CampaignCardProps 
+  | MenuCardProps 
+  | StatCardProps 
+  | AdoptedCardProps 
+  | (AppCardProps & { variant: 'generic' });
+
+// ─── COMPONENTE PRINCIPAL ───
+export const AppCard: React.FC<CardProps> = (props) => {
+  const theme = useTheme();
+  const isWeb = Platform.OS === 'web';
+
+  // Estilos base de la tarjeta
+  const baseStyle: ViewStyle = {
+    backgroundColor: theme.surface,
+    borderRadius: BorderRadius['2xl'],
+    borderWidth: 1,
+    borderColor: theme.border,
+    overflow: 'hidden',
+    ...getShadow('md', isWeb ? 'dark' : 'light'),
+  };
+
+  // Hover effect para web
+  const [isHovered, setIsHovered] = React.useState(false);
+
+  const handleMouseEnter = () => isWeb && setIsHovered(true);
+  const handleMouseLeave = () => isWeb && setIsHovered(false);
+
+  const hoverStyle: ViewStyle = isHovered && isWeb ? {
+    transform: [{ translateY: -4 }],
+    ...getShadow('lg', 'dark'),
+  } : {};
+
+  const renderContent = () => {
+    switch (props.variant) {
+      case 'animal':
+        return <AnimalContent {...props as AnimalCardProps} />;
+      case 'request':
+        return <RequestContent {...props as RequestCardProps} />;
+      case 'campaign':
+        return <CampaignContent {...props as CampaignCardProps} />;
+      case 'menu':
+        return <MenuContent {...props as MenuCardProps} />;
+      case 'stat':
+        return <StatContent {...props as StatCardProps} />;
+      case 'adopted':
+        return <AdoptedContent {...props as AdoptedCardProps} />;
+      default:
+        return props.children;
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      activeOpacity={props.onPress ? 0.85 : 1}
+      onPress={props.onPress}
+      onLongPress={props.onLongPress}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={[baseStyle, hoverStyle, props.style]}
+    >
+      {renderContent()}
+    </TouchableOpacity>
+  );
+};
+
+// ─── CONTENIDO: ANIMAL ───
+const AnimalContent: React.FC<AnimalCardProps> = ({
+  imageUrl,
+  name,
+  breed,
+  age,
+  size,
+  gender,
+  status,
+  onAdoptar,
+}) => {
+  const theme = useTheme();
+
+  return (
+    <View>
+      {/* Imagen */}
+      <View style={styles.animalImageContainer}>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.animalImage} />
+        ) : (
+          <View style={[styles.animalPlaceholder, { backgroundColor: theme.primaryLight }]}>
+            <Text style={{ fontSize: 40 }}>🐕</Text>
+          </View>
+        )}
+        {gender && (
+          <View style={[styles.genderBadge, { 
+            backgroundColor: gender === 'male' ? '#DBEAFE' : '#FCE7F3',
+            borderColor: gender === 'male' ? '#3B82F6' : '#EC4899'
+          }]}>
+            <Text style={{ fontSize: 12 }}>{gender === 'male' ? '♂' : '♀'}</Text>
+          </View>
+        )}
+        {status && (
+          <View style={styles.statusOverlay}>
+            <StatusBadge status={status} />
+          </View>
+        )}
+      </View>
+
+      {/* Info */}
+      <View style={styles.animalInfo}>
+        <H3 numberOfLines={1}>{name}</H3>
+        <View style={styles.animalMeta}>
+          {breed && <Caption>{breed}</Caption>}
+          {age && (
+            <Caption color="tertiary"> • {age}</Caption>
+          )}
+          {size && (
+            <Caption color="tertiary"> • {size}</Caption>
+          )}
+        </View>
+
+        {onAdoptar && (
+          <TouchableOpacity 
+            style={[styles.adoptButton, { backgroundColor: theme.primary }]}
+            onPress={onAdoptar}
+          >
+            <Body color="inverse" weight="semibold">Adoptar ❤️</Body>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
+
+// ─── CONTENIDO: SOLICITUD ───
+const RequestContent: React.FC<RequestCardProps> = ({
+  type,
+  applicantName,
+  animalName,
+  date,
+  status,
+  notes,
+  onApprove,
+  onReject,
+  onInfo,
+  onDelete,
+}) => {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.requestContainer}>
+      {/* Header */}
+      <View style={styles.requestHeader}>
+        <View style={{ flex: 1 }}>
+          <Body weight="semibold" numberOfLines={1}>{applicantName}</Body>
+          {animalName && (
+            <Caption>por {animalName}</Caption>
+          )}
+        </View>
+        <StatusBadge status={status} />
+      </View>
+
+      {/* Meta */}
+      <View style={styles.requestMeta}>
+        <Caption color="tertiary">{type === 'adoption' ? '🏠 Adopción' : '🏥 Castración'}</Caption>
+        <Caption color="tertiary"> • {date}</Caption>
+      </View>
+
+      {/* Notas */}
+      {notes && (
+        <View style={[styles.notesBox, { backgroundColor: theme.surfacePressed }]}>
+          <Caption color="secondary" numberOfLines={2}>{notes}</Caption>
+        </View>
+      )}
+
+      {/* Acciones */}
+      <View style={styles.requestActions}>
+        {onApprove && (
+          <TouchableOpacity 
+            style={[styles.actionBtn, { backgroundColor: theme.success + '20' }]}
+            onPress={onApprove}
+          >
+            <BodySmall color="success" weight="semibold">✓ Aprobar</BodySmall>
+          </TouchableOpacity>
+        )}
+        {onInfo && (
+          <TouchableOpacity 
+            style={[styles.actionBtn, { backgroundColor: theme.accent + '20' }]}
+            onPress={onInfo}
+          >
+            <BodySmall color="accent" weight="semibold">? Info</BodySmall>
+          </TouchableOpacity>
+        )}
+        {onReject && (
+          <TouchableOpacity 
+            style={[styles.actionBtn, { backgroundColor: theme.error + '20' }]}
+            onPress={onReject}
+          >
+            <BodySmall color="error" weight="semibold">✕ Rechazar</BodySmall>
+          </TouchableOpacity>
+        )}
+        {onDelete && (
+          <TouchableOpacity onPress={onDelete} style={styles.deleteBtn}>
+            <Text>🗑️</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
+
+// ─── CONTENIDO: CAMPAÑA ───
+const CampaignContent: React.FC<CampaignCardProps> = ({
+  date,
+  location,
+  status,
+  slots,
+  totalSlots,
+  onDelete,
+}) => {
+  const theme = useTheme();
+  const percentage = totalSlots && slots !== undefined 
+    ? Math.round(((totalSlots - slots) / totalSlots) * 100) 
+    : 0;
+
+  return (
+    <View style={styles.campaignContainer}>
+      <View style={styles.campaignHeader}>
+        <View>
+          <H4>{date}</H4>
+          <Caption color="secondary">{location}</Caption>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <StatusBadge status={status} />
+          {onDelete && (
+            <TouchableOpacity onPress={onDelete}>
+              <Text>🗑️</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {totalSlots && slots !== undefined && (
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressBar, { backgroundColor: theme.surfacePressed }]}>
+            <View style={[
+              styles.progressFill, 
+              { 
+                width: `${percentage}%`, 
+                backgroundColor: percentage >= 90 ? theme.error : percentage >= 70 ? theme.accent : theme.success 
+              }
+            ]} />
+          </View>
+          <Caption color="tertiary">
+            {totalSlots - slots} de {totalSlots} cupos ocupados ({percentage}%)
+          </Caption>
+        </View>
+      )}
+    </View>
+  );
+};
+
+// ─── CONTENIDO: MENÚ ───
+const MenuContent: React.FC<MenuCardProps> = ({ icon, title, count, subtitle }) => {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.menuContainer}>
+      <Text style={styles.menuIcon}>{icon}</Text>
+      <H4 align="center" style={{ marginTop: Spacing['2'] }}>{title}</H4>
+      <View style={[styles.menuBadge, { backgroundColor: theme.primaryLight }]}>
+        <BodySmall color="primary" weight="bold">{count}</BodySmall>
+      </View>
+      {subtitle && (
+        <Caption color="tertiary" style={{ marginTop: Spacing['1'] }}>{subtitle}</Caption>
+      )}
+    </View>
+  );
+};
+
+// ─── CONTENIDO: ESTADÍSTICA ───
+const StatContent: React.FC<StatCardProps> = ({ icon, label, value, trend, trendValue }) => {
+  const theme = useTheme();
+
+  const trendColors = {
+    up: theme.success,
+    down: theme.error,
+    neutral: theme.textTertiary,
+  };
+
+  const trendIcons = {
+    up: '↑',
+    down: '↓',
+    neutral: '→',
+  };
+
+  return (
+    <View style={styles.statContainer}>
+      <View style={styles.statHeader}>
+        <Text style={{ fontSize: 24 }}>{icon}</Text>
+        {trend && trendValue && (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: trendColors[trend], fontWeight: '600' }}>
+              {trendIcons[trend]} {trendValue}
+            </Text>
+          </View>
+        )}
+      </View>
+      <H2 style={{ marginTop: Spacing['2'] }}>{value}</H2>
+      <Caption color="secondary">{label}</Caption>
+    </View>
+  );
+};
+
+// ─── CONTENIDO: ADOPTADO ───
+const AdoptedContent: React.FC<AdoptedCardProps> = ({
+  imageUrl,
+  name,
+  familyName,
+  date,
+  quote,
+}) => {
+  const theme = useTheme();
+
+  return (
+    <View>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.adoptedImage} />
+      ) : (
+        <View style={[styles.adoptedPlaceholder, { backgroundColor: theme.secondaryLight }]}>
+          <Text style={{ fontSize: 48 }}>🏠</Text>
+        </View>
+      )}
+      <View style={styles.adoptedInfo}>
+        <H3 color="success">{name}</H3>
+        {familyName && (
+          <BodySmall color="secondary">Con la familia {familyName}</BodySmall>
+        )}
+        {date && (
+          <Caption color="tertiary">Adoptado el {date}</Caption>
+        )}
+        {quote && (
+          <View style={[styles.quoteBox, { backgroundColor: theme.secondaryLight }]}>
+            <BodySmall color="secondary" style={{ fontStyle: 'italic' }}>
+              "{quote}"
+            </BodySmall>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
+// ─── ESTILOS ───
+const styles = StyleSheet.create({
+  // Animal
+  animalImageContainer: {
+    position: 'relative',
+    height: 200,
+    width: '100%',
+  },
+  animalImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  animalPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  genderBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  statusOverlay: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+  },
+  animalInfo: {
+    padding: Spacing['4'],
+  },
+  animalMeta: {
+    flexDirection: 'row',
+    marginTop: Spacing['1'],
+    flexWrap: 'wrap',
+  },
+  adoptButton: {
+    marginTop: Spacing['3'],
+    padding: Spacing['3'],
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+  },
+
+  // Request
+  requestContainer: {
+    padding: Spacing['4'],
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing['2'],
+  },
+  requestMeta: {
+    flexDirection: 'row',
+    marginBottom: Spacing['3'],
+  },
+  notesBox: {
+    padding: Spacing['3'],
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing['3'],
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: Spacing['2'],
+    flexWrap: 'wrap',
+  },
+  actionBtn: {
+    paddingVertical: Spacing['2'],
+    paddingHorizontal: Spacing['3'],
+    borderRadius: BorderRadius.md,
+  },
+  deleteBtn: {
+    marginLeft: 'auto',
+    padding: Spacing['2'],
+  },
+
+  // Campaign
+  campaignContainer: {
+    padding: Spacing['4'],
+  },
+  campaignHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing['3'],
+  },
+  progressContainer: {
+    marginTop: Spacing['2'],
+  },
+  progressBar: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: Spacing['2'],
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+
+  // Menu
+  menuContainer: {
+    padding: Spacing['5'],
+    alignItems: 'center',
+    minWidth: 140,
+  },
+  menuIcon: {
+    fontSize: 32,
+    marginBottom: Spacing['2'],
+  },
+  menuBadge: {
+    marginTop: Spacing['2'],
+    paddingHorizontal: Spacing['3'],
+    paddingVertical: Spacing['1'],
+    borderRadius: BorderRadius.full,
+  },
+
+  // Stat
+  statContainer: {
+    padding: Spacing['5'],
+    minWidth: 160,
+  },
+  statHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  // Adopted
+  adoptedImage: {
+    width: '100%',
+    height: 220,
+    resizeMode: 'cover',
+  },
+  adoptedPlaceholder: {
+    width: '100%',
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adoptedInfo: {
+    padding: Spacing['4'],
+  },
+  quoteBox: {
+    marginTop: Spacing['3'],
+    padding: Spacing['3'],
+    borderRadius: BorderRadius.lg,
+  },
+});
+
+export default AppCard;

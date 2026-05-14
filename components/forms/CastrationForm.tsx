@@ -28,11 +28,23 @@ interface Props {
   onSubmit: (data: NuevaCastracion) => Promise<void>;
   onClose: () => void;
   titulo?: string;
+  user?: any;
+  dni?: string;
 }
 
-export function CastrationForm({ visible, onSubmit, onClose, titulo = 'Anotarse a la campaña' }: Props) {
+export function CastrationForm({ visible, onSubmit, onClose, titulo = 'Anotarse a la campaña', user, dni }: Props) {
   const [data, setData] = useState<NuevaCastracion>(INITIAL);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (visible && user) {
+      setData((prev) => ({
+        ...prev,
+        responsableNombre: user.displayName || prev.responsableNombre,
+        responsableDni: dni || prev.responsableDni,
+      }));
+    }
+  }, [visible, user, dni]);
 
   const set = (key: keyof NuevaCastracion, val: string) =>
     setData((prev) => ({ ...prev, [key]: val }));
@@ -123,13 +135,23 @@ function ToggleBtn({ label, active, onPress, color }: { label: string; active: b
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
+  overlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(15,23,42,0.55)', 
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
+    padding: Platform.OS === 'web' ? 20 : 0,
+  },
   sheet: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
+    borderBottomLeftRadius: Platform.OS === 'web' ? 28 : 0,
+    borderBottomRightRadius: Platform.OS === 'web' ? 28 : 0,
+    width: Platform.OS === 'web' ? '100%' : 'auto',
+    maxWidth: Platform.OS === 'web' ? 500 : '100%',
     padding: 24,
-    paddingBottom: 36,
+    paddingBottom: Platform.OS === 'web' ? 24 : 36,
     maxHeight: '90%',
   },
   titulo: { fontSize: 20, fontWeight: '800', color: '#0f172a' },

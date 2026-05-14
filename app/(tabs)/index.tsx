@@ -6,23 +6,52 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import app from "../../firebaseConfig";
 
-// NUEVOS HOOKS Y COMPONENTES
+// Design System
+import {
+  useTheme,
+  Spacing,
+  BorderRadius,
+  getShadow,
+  isWeb,
+  isDesktop,
+} from "../../design-system/tokens/Theme";
+import {
+  Hero,
+  H1,
+  H2,
+  H3,
+  Body,
+  BodySmall,
+  Caption,
+  SectionTitle,
+} from "../../design-system/tokens/Typography";
+import { AppCard } from "../../design-system/components/AppCard";
+import { AppButton } from "../../design-system/components/AppButton";
+import { StatusBadge } from "../../design-system/components/StatusBadge";
+import { SkeletonList } from "../../design-system/components/SkeletonCard";
+import { EmptyState } from "../../design-system/components/EmptyState";
+import { AppInput } from "../../design-system/components/AppInput";
+
+// NUEVOS HOOKS Y COMPONENTES EXISTENTES
 import { useAnimals } from '../../hooks/useAnimals';
 import { useCastrations } from '../../hooks/useCastrations';
 import { useAdoptions } from '../../hooks/useAdoptions';
+import { useAuth } from '../../hooks/useAuth';
 import { CastrationForm } from '../../components/forms/CastrationForm';
 import { AdoptionWizard } from '../../components/forms/AdoptionWizard';
-import { AnimalCard } from '../../components/ui/AnimalCard';
-import { Button, SectionTitle } from '../../components/ui';
+import WebHero from '../../components/ui/WebHero';
 
 export default function Index() {
+  const theme = useTheme();
+  const { user, dni } = useAuth();
   const { animales, loading: loadingAnimales } = useAnimals('En adopción');
   const { campanaActiva, inscribirEnCampana } = useCastrations();
   const { enviarSolicitud } = useAdoptions();
@@ -70,70 +99,93 @@ export default function Index() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={s.header}>
-          <Text style={s.titulo}>Cuatro Patitas</Text>
-          <Text style={s.subtitulo}>¡Adopta un amigo hoy!</Text>
-        </View>
+        {isWeb && <WebHero onAdoptarPress={() => {}} />}
 
-        <View style={s.contenido}>
-          {/* BANNER DE CASTRACIÓN PREMIUM */}
-          <View style={s.cajaCastracion}>
-            <View style={s.bannerRow}>
-              <View style={s.iconContainer}>
-                <Text style={s.bannerIcon}>🏥</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.tituloCajaOscura}>
-                  {campanaActiva
-                    ? `Próxima Campaña: ${campanaActiva.fecha}`
-                    : "Campañas de Castración"}
-                </Text>
-                <Text style={s.textoCajaOscura}>
-                  {campanaActiva
-                    ? `Lugar: ${campanaActiva.lugar}. ¡Anotá a tu mascota!`
-                    : "Actualmente no hay campañas abiertas al público. Consulta tu turno si ya estás anotado."}
-                </Text>
-              </View>
-            </View>
-            
-            <View style={s.filaBotones}>
-              {campanaActiva && (
-                <TouchableOpacity
-                  style={s.botonAmarillo}
-                  onPress={() => setModalCastracionVisible(true)}
-                >
-                  <Text style={s.textoBotonOscuro}>📝 Anotarse</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={s.botonConsultaGlobal}
-                onPress={() => setModalConsultaVisible(true)}
-              >
-                <Text style={s.textoBotonBlanco}>🔍 Mis Turnos</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <SectionTitle>Nuestros Perritos en Adopción</SectionTitle>
-
-          {loadingAnimales ? (
-            <ActivityIndicator size="large" color="#1e3a8a" style={{ marginTop: 20 }} />
-          ) : (
-            <View style={s.listaCatalogo}>
-              {animales.map((animal) => (
-                <AnimalCard
-                  key={animal.id}
-                  animal={animal}
-                  onAdoptar={(anim) => {
-                    setAnimalSeleccionado(anim);
-                    setModalVisible(true);
-                  }}
-                />
-              ))}
+        <View style={[s.webContainer, isDesktop && { maxWidth: 1200 }]}>
+          {!isWeb && (
+            <View style={[s.header, { backgroundColor: theme.primary }]}>
+              <Hero color="inverse">Cuatro Patitas</Hero>
+              <Body color="inverse" style={{ marginTop: Spacing['1'], opacity: 0.9 }}>
+                ¡Adopta un amigo hoy!
+              </Body>
             </View>
           )}
+
+          <View style={s.contenido}>
+            {/* BANNER DE CASTRACIÓN PREMIUM */}
+            <View style={[s.cajaCastracion, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <View style={s.bannerRow}>
+                <View style={[s.iconContainer, { backgroundColor: theme.primaryLight }]}>
+                  <Text style={s.bannerIcon}>🏥</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <H3 color="primary">
+                    {campanaActiva
+                      ? `Próxima Campaña: ${campanaActiva.fecha}`
+                      : "Campañas de Castración"}
+                  </H3>
+                  <BodySmall color="secondary">
+                    {campanaActiva
+                      ? `Lugar: ${campanaActiva.lugar}. ¡Anotá a tu mascota!`
+                      : "Actualmente no hay campañas abiertas al público. Consulta tu turno si ya estás anotado."}
+                  </BodySmall>
+                </View>
+              </View>
+              
+              <View style={s.filaBotones}>
+                {campanaActiva && (
+                  <AppButton
+                    label="Anotarse"
+                    variant="accent"
+                    icon="📝"
+                    onPress={() => setModalCastracionVisible(true)}
+                    style={{ flex: 1 }}
+                  />
+                )}
+                <AppButton
+                  label="Mis Turnos"
+                  variant="outline"
+                  icon="🔍"
+                  onPress={() => setModalConsultaVisible(true)}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+
+            <SectionTitle 
+              title="Perritos en Adopción 🐾" 
+              subtitle="Encuentra a tu compañero ideal" 
+            />
+
+            {loadingAnimales ? (
+              <SkeletonList count={4} type="animal" />
+            ) : animales.length === 0 ? (
+              <EmptyState type="no-animals" />
+            ) : (
+              <View style={s.listaCatalogo}>
+                {animales.map((animal) => (
+                  <View key={animal.id} style={s.itemCatalogo}>
+                    <AppCard
+                      variant="animal"
+                      imageUrl={animal.imagen}
+                      name={animal.nombre}
+                      breed={animal.raza}
+                      age={animal.edad}
+                      size={animal.tamaño}
+                      gender={animal.sexo?.toLowerCase() === 'macho' ? 'male' : 'female'}
+                      status={animal.estado}
+                      onAdoptar={() => {
+                        setAnimalSeleccionado(animal);
+                        setModalVisible(true);
+                      }}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -142,55 +194,77 @@ export default function Index() {
         visible={modalCastracionVisible}
         onSubmit={inscribirEnCampana}
         onClose={() => setModalCastracionVisible(false)}
+        user={user}
+        dni={dni}
       />
 
       {/* WIZARD ADOPCIÓN */}
       <AdoptionWizard
         visible={modalVisible}
         animal={animalSeleccionado}
-        onSubmit={enviarSolicitud}
+        onSubmit={(animalId, animalNombre, datos) => enviarSolicitud(animalId, animalNombre, datos, user?.email)}
         onClose={() => setModalVisible(false)}
+        user={user}
+        dni={dni}
       />
 
       {/* MODAL CONSULTA */}
       <Modal visible={modalConsultaVisible} animationType="slide" transparent={true}>
-        <View style={s.modalOverlay}>
-          <View style={s.modalSheet}>
-            <Text style={s.modalTitulo}>Buscar mis Trámites</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={s.modalOverlay}
+        >
+          <View style={[s.modalSheet, { backgroundColor: theme.surface }]}>
+            <H3 color="primary" style={{ marginBottom: Spacing['4'] }}>Buscar mis Trámites</H3>
             
-            <TextInput 
-              style={s.input} 
+            <AppInput 
               placeholder="Ingresa tu DNI (Sin puntos)" 
-              placeholderTextColor="#94a3b8"
               keyboardType="numeric" 
               value={dniConsulta} 
               onChangeText={setDniConsulta} 
+              variant="filled"
             />
             
-            <Button label="Buscar" onPress={consultarPorDNI} variant="primary" style={{ marginTop: 10 }} />
+            <AppButton 
+              label="Buscar" 
+              onPress={consultarPorDNI} 
+              variant="primary" 
+              loading={buscandoConsulta}
+              style={{ marginTop: Spacing['3'] }} 
+            />
 
-            {buscandoConsulta ? (
-              <ActivityIndicator size="large" color="#1e3a8a" style={{ marginTop: 20 }} />
-            ) : (
-              <ScrollView style={{ maxHeight: 200, marginTop: 15 }} showsVerticalScrollIndicator={false}>
-                {resultadosConsulta.map((res, index) => (
-                  <View key={index} style={s.cajaResultado}>
-                    <Text style={{ fontWeight: '700', color: '#0f172a' }}>Trámite: {res.tipo} ({res.animalNombre})</Text>
-                    <Text style={{ fontSize: 14, color: '#64748b', marginVertical: 4 }}>Estado: {res.estadoSolicitud || res.estadoTurno}</Text>
-                    {res.notaDevolucion ? <Text style={{ fontSize: 13, color: '#0f172a' }}>Mensaje: {res.notaDevolucion}</Text> : null}
-                  </View>
-                ))}
-              </ScrollView>
-            )}
+            <ScrollView style={{ maxHeight: 300, marginTop: Spacing['4'] }} showsVerticalScrollIndicator={false}>
+              {resultadosConsulta.map((res, index) => (
+                <View 
+                  key={index} 
+                  style={[
+                    s.cajaResultado, 
+                    { backgroundColor: theme.surfacePressed, borderColor: theme.border }
+                  ]}
+                >
+                  <Body weight="semibold" color="primary">
+                    {res.tipo}: {res.animalNombre}
+                  </Body>
+                  <StatusBadge 
+                    status={res.estadoSolicitud || res.estadoTurno} 
+                    size="sm" 
+                    style={{ marginVertical: Spacing['2'] }} 
+                  />
+                  {res.notaDevolucion && (
+                    <Caption color="secondary">Nota: {res.notaDevolucion}</Caption>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
             
             <TouchableOpacity 
-              style={{ marginTop: 20, alignItems: 'center' }} 
+              style={{ marginTop: Spacing['5'], alignItems: 'center' }} 
               onPress={() => { setModalConsultaVisible(false); setResultadosConsulta([]); setDniConsulta(''); }}
             >
-              <Text style={{ color: '#ef4444', fontWeight: '700' }}>Cerrar</Text>
+              <Body weight="semibold" color="error">Cerrar</Body>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </View>
@@ -198,95 +272,80 @@ export default function Index() {
 }
 
 const s = StyleSheet.create({
-  header: {
-    padding: 30,
-    paddingTop: 50,
-    backgroundColor: "#1e3a8a",
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    alignItems: "center",
+  webContainer: {
+    width: '100%',
+    maxWidth: 1024,
+    alignSelf: 'center',
   },
-  titulo: { fontSize: 32, fontWeight: "800", color: "#ffffff" },
-  subtitulo: { fontSize: 16, color: "#93c5fd", marginTop: 4, fontWeight: "500" },
-  contenido: { padding: 20 },
+  header: {
+    padding: Spacing['8'],
+    paddingTop: Spacing['12'],
+    borderBottomLeftRadius: BorderRadius['3xl'],
+    borderBottomRightRadius: BorderRadius['3xl'],
+    alignItems: 'center',
+  },
+  contenido: { padding: Spacing['4'] },
   
   // Banner de Castración
   cajaCastracion: {
-    backgroundColor: "#ffffff",
-    padding: 20,
-    borderRadius: 24,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    padding: Spacing['5'],
+    borderRadius: BorderRadius['2xl'],
+    marginBottom: Spacing['5'],
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    ...getShadow('sm', 'light'),
   },
-  bannerRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  bannerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing['4'] },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#eff6ff',
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bannerIcon: { fontSize: 24 },
-  tituloCajaOscura: {
-    color: "#0f172a",
-    fontSize: 16,
-    fontWeight: "800",
-    marginBottom: 2,
-  },
-  textoCajaOscura: { color: "#64748b", fontSize: 13, lineHeight: 18 },
-  filaBotones: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  botonAmarillo: {
-    backgroundColor: "#fef08a",
-    padding: 12,
-    borderRadius: 12,
-    alignItems: "center",
-    flex: 1,
-  },
-  botonConsultaGlobal: {
-    backgroundColor: "#1e3a8a",
-    padding: 12,
-    borderRadius: 12,
-    alignItems: "center",
-    flex: 1,
-  },
-  textoBotonBlanco: { color: "#ffffff", fontWeight: "700", fontSize: 14 },
-  textoBotonOscuro: { color: "#854d0e", fontWeight: "700", fontSize: 14 },
+  bannerIcon: { fontSize: 28 },
+  filaBotones: { flexDirection: 'row', gap: Spacing['3'], marginTop: Spacing['4'] },
   
-  listaCatalogo: { gap: 16 },
+  listaCatalogo: { 
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing['4'],
+    ...Platform.select({
+      web: {
+        display: 'grid' as any,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+        gap: '24px',
+      },
+      default: {},
+    }),
+  },
+  itemCatalogo: {
+    flex: 1,
+    minWidth: 300,
+    maxWidth: isDesktop ? 400 : '100%',
+  },
   
   // Modales
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'flex-end' },
-  modalSheet: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    padding: 24,
-    paddingBottom: 40,
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(15,23,42,0.6)', 
+    justifyContent: isWeb ? 'center' : 'flex-end',
+    alignItems: isWeb ? 'center' : 'stretch',
+    padding: isWeb ? 20 : 0,
   },
-  modalTitulo: { fontSize: 20, fontWeight: '800', color: '#0f172a', marginBottom: 15 },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
-    padding: 16,
-    fontSize: 15,
-    color: '#0f172a',
-    marginBottom: 10,
+  modalSheet: {
+    borderTopLeftRadius: BorderRadius['3xl'],
+    borderTopRightRadius: BorderRadius['3xl'],
+    borderBottomLeftRadius: isWeb ? BorderRadius['3xl'] : 0,
+    borderBottomRightRadius: isWeb ? BorderRadius['3xl'] : 0,
+    width: isWeb ? '100%' : 'auto',
+    maxWidth: isWeb ? 500 : '100%',
+    padding: Spacing['6'],
+    paddingBottom: isWeb ? Spacing['6'] : Spacing['10'],
   },
   cajaResultado: {
-    padding: 14,
-    backgroundColor: "#f8fafc",
-    borderRadius: 14,
+    padding: Spacing['4'],
+    borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    marginBottom: 10,
+    marginBottom: Spacing['3'],
   },
 });

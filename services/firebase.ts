@@ -3,17 +3,21 @@
 // Punto único de acceso a Firebase que envuelve la configuración principal
 // ============================================================
 // @ts-ignore: getReactNativePersistence solo está en las definiciones de react-native
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import app from '../firebaseConfig'; // Apunta al archivo original en la raíz
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
+
+export const auth = Platform.OS === 'web' 
+  ? getAuth(app) 
+  : initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
 
 // Nombres de colecciones como constantes para evitar typos
 export const COLLECTIONS = {

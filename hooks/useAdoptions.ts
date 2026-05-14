@@ -37,9 +37,10 @@ export function useAdoptions() {
   const enviarSolicitud = async (
     animalId: string,
     animalNombre: string,
-    datos: DatosAdoptante
+    datos: DatosAdoptante,
+    userEmail?: string
   ) => {
-    await addSolicitud(animalId, animalNombre, datos);
+    await addSolicitud(animalId, animalNombre, datos, userEmail);
   };
 
   // Aprueba la solicitud, mueve el animal a "Adoptado" y crea ficha de seguimiento
